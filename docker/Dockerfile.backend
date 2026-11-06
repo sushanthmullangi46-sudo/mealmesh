@@ -1,0 +1,40 @@
+# Multi-stage Dockerfile for FastAPI + C++20 DSA Engine
+FROM python:3.13-slim AS builder
+
+WORKDIR /build
+
+# Install C++20 build tools, cmake, and pybind11
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    cmake \
+    git \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy C++ engine source and CMake files
+COPY dsa-engine /build/dsa-engine
+RUN mkdir -p /build/dsa-engine/build && cd /build/dsa-engine/build \
+    && cmake -DCMAKE_BUILD_TYPE=Release .. \
+    && cmake --build . -j$(nproc)
+
+# Final runtime image
+FROM python:3.13-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy backend requirements
+COPY backend/requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy source code and compiled C++ binaries if available
+COPY backend /app/backend
+COPY database /app/database
+
+ENV PYTHONPATH=/app/backend:/app
+EXPOSE 8000
+
+CMD ["python", "-m", "uvicorn", "app.main:app", "--app-dir", "backend", "--host", "0.0.0.0", "--port", "8000"]
