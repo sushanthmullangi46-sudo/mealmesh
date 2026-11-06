@@ -148,3 +148,4 @@ def test_auth_flow():
     token_data = res_login.json()
     assert "access_token" in token_data
     assert token_data["token_type"] == "bearer"
+

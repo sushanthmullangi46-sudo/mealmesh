@@ -98,6 +98,14 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       setLocations(locsData);
       setRoads(roadsData);
       setStats(statsData);
+
+      // Auto-compute realistic default route (Times Sq to Battery Park) on initial load
+      if (!activeRoute) {
+        try {
+          const defaultRoute = await api.findFastestPath(2, 12);
+          setActiveRoute(defaultRoute);
+        } catch (_) {}
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to load graph data');
     } finally {

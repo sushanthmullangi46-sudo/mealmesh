@@ -24,3 +24,4 @@ def optimize_multi_stop_route(req: MultiStopRequest):
         )
 
     return res
+

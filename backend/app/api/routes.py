@@ -65,3 +65,4 @@ def delete_saved_route(route_id: int, db: Session = Depends(get_db)):
 @router.get("/history")
 def get_route_history(limit: int = Query(50, ge=1, le=200), db: Session = Depends(get_db)):
     return db.query(RouteHistory).order_by(RouteHistory.created_at.desc()).limit(limit).all()
+

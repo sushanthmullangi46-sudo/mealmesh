@@ -15,3 +15,4 @@ class AlgorithmBenchmark(Base):
     path_distance_km = Column(Float, nullable=False)
     memory_mb = Column(Float, default=0.0)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+

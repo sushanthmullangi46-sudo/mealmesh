@@ -102,3 +102,4 @@ def delete_location(location_id: int, db: Session = Depends(get_db)):
     service = GraphService.get_instance()
     service.graph.remove_node(location_id)
     return None
+

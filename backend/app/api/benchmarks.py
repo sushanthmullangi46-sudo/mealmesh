@@ -19,3 +19,4 @@ def execute_benchmarks(
 @router.get("/history")
 def get_benchmark_history(db: Session = Depends(get_db)):
     return db.query(AlgorithmBenchmark).order_by(AlgorithmBenchmark.created_at.desc()).limit(100).all()
+

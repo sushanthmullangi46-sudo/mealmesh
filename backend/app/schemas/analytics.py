@@ -22,3 +22,4 @@ class TraversalResponse(BaseModel):
     start_node_id: int
     visited_order: List[int]
     visited_names: List[str]
+

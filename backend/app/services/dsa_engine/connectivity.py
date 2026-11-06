@@ -101,3 +101,4 @@ class Connectivity:
             isolated_nodes=isolated,
             execution_time_ms=round(exec_ms, 3)
         )
+

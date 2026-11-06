@@ -115,3 +115,4 @@ def delete_road(road_id: str, db: Session = Depends(get_db)):
     service = GraphService.get_instance()
     service.graph.remove_edge(road_id)
     return None
+

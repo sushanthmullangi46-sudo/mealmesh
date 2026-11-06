@@ -175,3 +175,4 @@ class Dijkstra:
 
 def math_is_inf(val: float) -> bool:
     return val == float("inf") or val != val
+

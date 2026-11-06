@@ -142,3 +142,4 @@ If $\Delta < 0$, the reversal strictly improves the tour.
 - **Distance Matrix Precomputation**: $K \times \text{Dijkstra} = \mathcal{O}(K \cdot (|V| + |E|) \log |V|)$.
 - **2-Opt Optimization**: $\mathcal{O}(K^2)$ per pass, converging in $\mathcal{O}(I \cdot K^2)$ steps where $I \le 500$.
 - **Space Complexity**: $\mathcal{O}(K^2 + |V|)$ for the distance matrix and subpath cache.
+

@@ -36,3 +36,4 @@ def login(login_data: UserLogin, db: Session = Depends(get_db)):
 
     token = create_access_token(subject=user.id)
     return Token(access_token=token, token_type="bearer", user=UserOut.model_validate(user))
+

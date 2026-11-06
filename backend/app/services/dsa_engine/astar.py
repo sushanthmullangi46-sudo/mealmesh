@@ -176,3 +176,4 @@ class AStar:
             algorithm_name="A*",
             optimization_objective=objective.value if hasattr(objective, "value") else str(objective)
         )
+

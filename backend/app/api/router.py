@@ -22,3 +22,4 @@ api_router.include_router(visualize_router)
 api_router.include_router(analytics_router)
 api_router.include_router(benchmarks_router)
 api_router.include_router(stats_router)
+

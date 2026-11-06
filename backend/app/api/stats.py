@@ -20,3 +20,4 @@ def reset_seed_data(db: Session = Depends(get_db)):
         "message": "Demo road network reseeded successfully.",
         "stats": service.get_stats(db)
     }
+

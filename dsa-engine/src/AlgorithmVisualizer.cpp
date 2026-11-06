@@ -404,3 +404,4 @@ VisualizationTrace AlgorithmVisualizer::traceAStar(
 }
 
 } // namespace dsa
+

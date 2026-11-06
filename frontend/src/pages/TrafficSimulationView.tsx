@@ -199,3 +199,4 @@ export const TrafficSimulationView: React.FC = () => {
     </div>
   );
 };
+

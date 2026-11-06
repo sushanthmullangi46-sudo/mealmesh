@@ -190,3 +190,4 @@ export const BenchmarksView: React.FC = () => {
     </div>
   );
 };
+

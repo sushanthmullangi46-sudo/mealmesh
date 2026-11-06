@@ -505,3 +505,4 @@ class GraphService:
             db.commit()
         except Exception:
             db.rollback()
+

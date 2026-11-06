@@ -16,3 +16,4 @@ class Road(Base):
     road_name = Column(String(100), default="Road")
     road_type = Column(String(50), default="primary") # "highway", "arterial", "avenue", "residential"
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+

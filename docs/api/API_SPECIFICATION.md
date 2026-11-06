@@ -132,3 +132,4 @@ Returns Depth-First Search traversal sequence.
 
 ### `POST /benchmarks/run`
 Executes repeatable scalability tests on synthetic graph topologies (50, 500, 2000, 5000 nodes) measuring runtime latency, visited nodes, examined edges, and path distance.
+

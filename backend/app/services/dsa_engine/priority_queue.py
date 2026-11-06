@@ -68,3 +68,4 @@ class PriorityQueue(Generic[T]):
     def get_top_k(self, k: int = 10) -> List[Tuple[T, float]]:
         sorted_heap = sorted(self.heap, key=lambda x: x[0])
         return [(elem, prio) for prio, elem in sorted_heap[:k]]
+

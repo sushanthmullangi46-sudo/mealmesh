@@ -33,3 +33,4 @@ class RouteHistory(Base):
     execution_time_ms = Column(Float, nullable=False)
     path_nodes = Column(JSON, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+

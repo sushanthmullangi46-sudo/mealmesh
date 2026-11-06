@@ -202,3 +202,4 @@ class Graph:
         g.version_ = self.version_
         g.max_speed_kmh_ = self.max_speed_kmh_
         return g
+

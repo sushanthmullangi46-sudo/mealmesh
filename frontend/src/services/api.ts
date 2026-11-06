@@ -102,3 +102,4 @@ export const api = {
     }),
   getBenchmarkHistory: () => fetchJson<any[]>('/benchmarks/history'),
 };
+

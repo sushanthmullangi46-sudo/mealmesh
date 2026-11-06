@@ -83,3 +83,4 @@ INITIAL_ROADS = [
     # Island Connection (Isolated Island)
     {"id": "r_90_91", "source_id": 90, "target_id": 91, "distance_km": 0.3, "speed_limit_kmh": 20.0, "traffic_level": "LOW", "toll_cost": 0.0, "is_one_way": False, "road_name": "Governors Island Pathway", "road_type": "residential"},
 ]
+

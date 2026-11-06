@@ -49,3 +49,4 @@ def get_traffic_snapshot(db: Session = Depends(get_db)):
         "road_traffic": {r.id: r.traffic_level for r in roads},
         "graph_version": GraphService.get_instance().graph.get_version()
     }
+

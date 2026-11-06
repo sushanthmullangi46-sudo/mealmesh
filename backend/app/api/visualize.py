@@ -18,3 +18,4 @@ def get_algorithm_trace(req: VisualizationRequest):
         algorithm=req.algorithm,
         objective=req.objective
     )
+

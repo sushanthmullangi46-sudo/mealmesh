@@ -151,3 +151,4 @@ class VisualizationTrace:
     total_steps: int
     steps: List[DetailedVisualizationStep]
     execution_time_ms: float
+

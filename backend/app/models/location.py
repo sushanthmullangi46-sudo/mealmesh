@@ -13,3 +13,4 @@ class Location(Base):
     type = Column(String(50), default="intersection") # "intersection", "poi", "terminal", "hospital"
     description = Column(String(255), default="")
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
