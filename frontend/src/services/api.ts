@@ -209,6 +209,16 @@ export const api = {
     return json.success ? json.data : [];
   },
 
+  async getVolunteerFleet(): Promise<VolunteerProfile[]> {
+    try {
+      const res = await fetch(`${API_BASE}/volunteer/fleet`, { headers: getAuthHeader() });
+      const json = await res.json();
+      return json.success ? json.data : [];
+    } catch {
+      return [];
+    }
+  },
+
   async updateDeliveryStatus(id: string, status: string): Promise<Delivery> {
     const res = await fetch(`${API_BASE}/volunteer/deliveries/${id}/status`, {
       method: 'PATCH',

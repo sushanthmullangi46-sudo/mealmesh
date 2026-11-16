@@ -728,15 +728,15 @@ export const AdminDashboard: React.FC = () => {
             </span>
           </div>
 
-          {/* Embedded Real-Time Swiggy/Zomato Style Delivery Radar */}
+          {/* Embedded Real-Time Live Delivery Radar */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-extrabold text-slate-800 flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                Live Courier Telemetry (Koramangala ➔ Jayanagar Hub)
+                Live Tracking (Koramangala ➔ Jayanagar Hub)
               </span>
               <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                Automated Arrival & Handover Telemetry
+                Turn-by-Turn GPS Telemetry
               </span>
             </div>
             <LiveDeliveryTracker
@@ -820,6 +820,45 @@ export const AdminDashboard: React.FC = () => {
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Active Volunteer Fleet Grid */}
+          <div className="pt-4 border-t border-slate-100 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-sm text-slate-900 flex items-center gap-1.5">
+                <Users className="w-4 h-4 text-emerald-600" />
+                Active Volunteer Transporter Fleet Across Bengaluru
+              </h3>
+              <span className="text-xs text-slate-500 font-semibold">6 Rapid Responders Deployed</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {[
+                { name: 'Rahul Sharma', vehicle: 'Hero Electric Photon', reg: 'KA-01-EQ-1001', area: 'Koramangala 4th Block', phone: '+91 99000 22001', rating: '4.90', trips: 32, status: 'In-Transit (Live Tracking)' },
+                { name: 'Priya Sundaram', vehicle: 'Ather 450X', reg: 'KA-05-MR-4421', area: '100ft Rd, Indiranagar', phone: '+91 98453 44002', rating: '4.95', trips: 45, status: 'Available for Dispatch' },
+                { name: 'Mohammed Farhan', vehicle: 'Ola S1 Pro', reg: 'KA-03-JN-8832', area: '27th Main, HSR Layout', phone: '+91 98453 44012', rating: '4.88', trips: 62, status: 'Mission Completed' },
+                { name: 'Ananya Deshmukh', vehicle: 'TVS iQube', reg: 'KA-04-EL-2094', area: '2nd Stage, BTM Layout', phone: '+91 98453 44004', rating: '4.92', trips: 38, status: 'Available for Dispatch' },
+                { name: 'Vikramaditya Rao', vehicle: 'Tata Ace EV Mini-Van', reg: 'KA-51-MD-9002', area: 'Silk Board Corridor', phone: '+91 98453 44015', rating: '4.97', trips: 112, status: 'Bulk Transport On Standby' },
+                { name: 'Deepa R. Nair', vehicle: 'Ampere Magnus', reg: 'KA-01-HG-3301', area: 'Phase 1, Electronic City', phone: '+91 98453 44018', rating: '4.89', trips: 29, status: 'Available for Dispatch' },
+              ].map((vol) => (
+                <div key={vol.reg} className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 space-y-1.5 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-900">{vol.name}</span>
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded">
+                      ⭐ {vol.rating}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-600 font-mono flex items-center justify-between">
+                    <span>{vol.vehicle}</span>
+                    <span className="text-slate-400">{vol.reg}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">{vol.area} • {vol.phone}</p>
+                  <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 text-[10px]">
+                    <span className="text-emerald-700 font-semibold">{vol.status}</span>
+                    <span className="text-slate-500 font-bold">{vol.trips} completed</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { Delivery, RouteResponse, RouteWaypoint } from '../types/mealmesh';
+import { Delivery, RouteResponse, RouteWaypoint, VolunteerProfile } from '../types/mealmesh';
 import { MealMeshMap } from '../maps/MealMeshMap';
 import { LiveDeliveryTracker } from '../maps/LiveDeliveryTracker';
 import {
@@ -15,7 +15,19 @@ import {
   PackageCheck,
   Radio,
   Zap,
+  Users,
+  ShieldCheck,
+  BatteryCharging,
 } from 'lucide-react';
+
+const SEEDED_FLEET_VOLUNTEERS = [
+  { name: 'Rahul Sharma', vehicle: 'Hero Electric Photon', reg: 'KA-01-EQ-1001', area: 'Koramangala', rating: '4.9', completed: 32 },
+  { name: 'Priya Sundaram', vehicle: 'Ather 450X', reg: 'KA-05-MR-4421', area: 'Indiranagar', rating: '4.95', completed: 45 },
+  { name: 'Mohammed Farhan', vehicle: 'Ola S1 Pro', reg: 'KA-03-JN-8832', area: 'HSR Layout', rating: '4.88', completed: 62 },
+  { name: 'Ananya Deshmukh', vehicle: 'TVS iQube', reg: 'KA-04-EL-2094', area: 'BTM / Jayanagar', rating: '4.92', completed: 38 },
+  { name: 'Vikramaditya Rao', vehicle: 'Tata Ace EV Mini-Van', reg: 'KA-51-MD-9002', area: 'Silk Board Hub', rating: '4.97', completed: 112 },
+  { name: 'Deepa R. Nair', vehicle: 'Ampere Magnus', reg: 'KA-01-HG-3301', area: 'Electronic City', rating: '4.89', completed: 29 },
+];
 
 export const VolunteerDashboard: React.FC = () => {
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
@@ -25,7 +37,10 @@ export const VolunteerDashboard: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [routeLoading, setRouteLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const [mapMode, setMapMode] = useState<'swiggy' | 'dijkstra'>('swiggy');
+  const [mapMode, setMapMode] = useState<'live' | 'dijkstra'>('live');
+  const [activeVolunteerIndex, setActiveVolunteerIndex] = useState<number>(0);
+
+  const currentVolunteer = SEEDED_FLEET_VOLUNTEERS[activeVolunteerIndex];
 
   const fetchDeliveries = async () => {
     setLoading(true);
@@ -80,7 +95,7 @@ export const VolunteerDashboard: React.FC = () => {
     }
   };
 
-  // Called automatically when the Swiggy/Zomato countdown completes (< 5 min)
+  // Called automatically when the countdown completes (< 5 min)
   const handleAutoReached = () => {
     if (selectedDelivery && selectedDelivery.status !== 'DELIVERED') {
       handleUpdateStatus(selectedDelivery.id, 'DELIVERED');
@@ -90,7 +105,7 @@ export const VolunteerDashboard: React.FC = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-5">
         <div>
@@ -103,7 +118,7 @@ export const VolunteerDashboard: React.FC = () => {
             </h1>
           </div>
           <p className="text-xs text-slate-600 mt-1">
-            Accept food transport missions with turn-by-turn Dijkstra route optimization and Swiggy/Zomato live GPS telemetry.
+            Accept food transport missions with turn-by-turn Dijkstra route optimization and high-accuracy live street telemetry.
           </p>
         </div>
 
@@ -116,6 +131,45 @@ export const VolunteerDashboard: React.FC = () => {
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             Refresh Missions
           </button>
+        </div>
+      </div>
+
+      {/* Active Rapid Volunteer Fleet Selector */}
+      <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-2.5">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">
+            <Users className="w-4 h-4 text-emerald-600" />
+            Active Rapid Volunteer Fleet ({SEEDED_FLEET_VOLUNTEERS.length} Transporters Online)
+          </span>
+          <span className="text-[11px] text-emerald-700 font-bold bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+            Current: {currentVolunteer.name} ({currentVolunteer.vehicle})
+          </span>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+          {SEEDED_FLEET_VOLUNTEERS.map((vol, idx) => {
+            const isSelected = activeVolunteerIndex === idx;
+            return (
+              <button
+                key={vol.reg}
+                onClick={() => setActiveVolunteerIndex(idx)}
+                className={`text-left p-2.5 rounded-xl border text-xs transition space-y-1 ${
+                  isSelected
+                    ? 'bg-amber-50/80 border-amber-500 ring-1 ring-amber-400'
+                    : 'bg-slate-50/60 border-slate-200 hover:bg-white hover:border-slate-300'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-900 truncate">{vol.name}</span>
+                  <span className="text-[10px] text-emerald-700 font-bold">⭐ {vol.rating}</span>
+                </div>
+                <p className="text-[10px] text-slate-500 truncate">{vol.vehicle}</p>
+                <div className="flex items-center justify-between text-[10px] text-slate-400">
+                  <span>{vol.area}</span>
+                  <span className="font-bold text-slate-600">{vol.completed} trips</span>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -136,7 +190,7 @@ export const VolunteerDashboard: React.FC = () => {
               Assigned Missions ({deliveries.length})
             </h2>
             <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-              Hero Electric Photon • KA-01-EQ-1001
+              {currentVolunteer.vehicle} • {currentVolunteer.reg}
             </span>
           </div>
 
@@ -150,7 +204,7 @@ export const VolunteerDashboard: React.FC = () => {
                   Ready for Dispatch
                 </h3>
                 <p className="text-xs text-slate-500 max-w-xs mx-auto">
-                  Demonstration consignment loaded on live radar. When an NGO claims a surplus batch, new missions populate here automatically.
+                  Demonstration consignment active on live telemetry. When an NGO claims a surplus batch, new missions populate here automatically.
                 </p>
               </div>
             ) : (
@@ -265,21 +319,21 @@ export const VolunteerDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Live Map & Swiggy/Zomato Tracking Telemetry (7 cols) */}
+        {/* Live Map & Tracking Telemetry (7 cols) */}
         <div className="lg:col-span-7 space-y-4">
           {/* Telemetry View Mode Tabs */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200 text-xs">
               <button
-                onClick={() => setMapMode('swiggy')}
+                onClick={() => setMapMode('live')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition ${
-                  mapMode === 'swiggy'
+                  mapMode === 'live'
                     ? 'bg-white text-emerald-900 shadow-sm'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 <Bike className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Live Swiggy/Zomato Tracking</span>
+                <span>Live Tracking</span>
               </button>
               <button
                 onClick={() => setMapMode('dijkstra')}
@@ -302,7 +356,7 @@ export const VolunteerDashboard: React.FC = () => {
           </div>
 
           {/* Render Active View Mode */}
-          {mapMode === 'swiggy' ? (
+          {mapMode === 'live' ? (
             <LiveDeliveryTracker
               foodTitle={
                 selectedDelivery?.allocation?.donation?.title ||
@@ -313,17 +367,17 @@ export const VolunteerDashboard: React.FC = () => {
               }
               donorName={
                 selectedDelivery?.allocation?.donation?.donorOrganization ||
-                'ITC Gardenia Kitchen, Koramangala'
+                'ITC Gardenia Kitchen, Koramangala 4th Block'
               }
               ngoName={
                 selectedDelivery?.allocation?.ngo?.organizationName ||
                 'Akshaya Patra Redistribution Hub, Jayanagar'
               }
-              transporterName="Rahul Sharma"
-              vehicleNumber="Hero Electric Photon • KA-01-EQ-1001"
+              transporterName={currentVolunteer.name}
+              vehicleNumber={`${currentVolunteer.vehicle} • ${currentVolunteer.reg}`}
               deliveryId={selectedDelivery?.id}
               onDelivered={handleAutoReached}
-              height="520px"
+              height="540px"
             />
           ) : (
             <div className="space-y-4">

@@ -57,4 +57,9 @@ public class VolunteerController {
         VolunteerProfileResponseDto profile = volunteerService.getVolunteerProfile(email);
         return ResponseEntity.ok(ApiResponse.ok(profile));
     }
+
+    @GetMapping("/fleet")
+    public ResponseEntity<ApiResponse<List<VolunteerProfileResponseDto>>> getFleet() {
+        return ResponseEntity.ok(ApiResponse.ok("Retrieved all active fleet volunteers", volunteerService.getAllVolunteers()));
+    }
 }

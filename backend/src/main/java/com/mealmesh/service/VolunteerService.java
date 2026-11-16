@@ -66,4 +66,10 @@ public class VolunteerService {
                 .orElseGet(() -> volunteerProfileRepository.findAll().stream().findFirst().orElse(null));
         return VolunteerProfileResponseDto.fromEntity(profile);
     }
+
+    public List<VolunteerProfileResponseDto> getAllVolunteers() {
+        return volunteerProfileRepository.findAll().stream()
+                .map(VolunteerProfileResponseDto::fromEntity)
+                .collect(Collectors.toList());
+    }
 }

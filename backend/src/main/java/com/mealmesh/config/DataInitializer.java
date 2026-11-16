@@ -51,11 +51,12 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) {
-        if (userRepository.count() > 0) {
+        String encodedPassword = passwordEncoder.encode("demo123");
+        ensureAdditionalVolunteers(encodedPassword);
+
+        if (userRepository.count() > 8) {
             return; // Already initialized
         }
-
-        String encodedPassword = passwordEncoder.encode("demo123");
 
         // 1. Admin
         User admin = new User(null, "admin@mealmesh.org", encodedPassword, "System Administrator", "+91 80 4000 0001", "ADMIN");
@@ -211,5 +212,61 @@ public class DataInitializer implements CommandLineRunner {
         dist.setQuantityDistributedKg(520.0);
         dist.setDistributedAt(LocalDateTime.now().minusDays(1));
         distributionRepository.save(dist);
+    }
+
+    private void ensureAdditionalVolunteers(String encodedPassword) {
+        // 1. Priya Sundaram
+        if (!userRepository.existsByEmail("volunteer.priya@mealmesh.org")) {
+            User u = new User(null, "volunteer.priya@mealmesh.org", encodedPassword, "Priya Sundaram", "+91 98453 44002", "VOLUNTEER");
+            u.setVerified(true);
+            u = userRepository.save(u);
+            locationRepository.save(new Location(null, u, "Priya Hub Indiranagar", "100ft Road, Indiranagar", "Bengaluru", "560038", 12.9784, 77.6408));
+            volunteerProfileRepository.save(new VolunteerProfile(null, u, "TWO_WHEELER", "KA-05-MR-4421", 35.0, true, 12.9784, 77.6408, 45));
+        }
+
+        // 2. Mohammed Farhan
+        if (!userRepository.existsByEmail("volunteer.farhan@mealmesh.org")) {
+            User u = new User(null, "volunteer.farhan@mealmesh.org", encodedPassword, "Mohammed Farhan", "+91 98453 44012", "VOLUNTEER");
+            u.setVerified(true);
+            u = userRepository.save(u);
+            locationRepository.save(new Location(null, u, "Farhan Hub HSR", "27th Main, HSR Layout", "Bengaluru", "560102", 12.9121, 77.6446));
+            volunteerProfileRepository.save(new VolunteerProfile(null, u, "TWO_WHEELER", "KA-03-JN-8832", 35.0, true, 12.9121, 77.6446, 62));
+        }
+
+        // 3. Ananya Deshmukh
+        if (!userRepository.existsByEmail("volunteer.ananya@mealmesh.org")) {
+            User u = new User(null, "volunteer.ananya@mealmesh.org", encodedPassword, "Ananya Deshmukh", "+91 98453 44004", "VOLUNTEER");
+            u.setVerified(true);
+            u = userRepository.save(u);
+            locationRepository.save(new Location(null, u, "Ananya Hub BTM", "2nd Stage Ring Rd, BTM", "Bengaluru", "560076", 12.9182, 77.6145));
+            volunteerProfileRepository.save(new VolunteerProfile(null, u, "TWO_WHEELER", "KA-04-EL-2094", 30.0, true, 12.9182, 77.6145, 38));
+        }
+
+        // 4. Karthik Venkatesh
+        if (!userRepository.existsByEmail("volunteer.karthik@mealmesh.org")) {
+            User u = new User(null, "volunteer.karthik@mealmesh.org", encodedPassword, "Karthik Venkatesh", "+91 98453 44003", "VOLUNTEER");
+            u.setVerified(true);
+            u = userRepository.save(u);
+            locationRepository.save(new Location(null, u, "Karthik Hub Malleshwaram", "Sampige Road, Malleshwaram", "Bengaluru", "560003", 12.9982, 77.5714));
+            volunteerProfileRepository.save(new VolunteerProfile(null, u, "TWO_WHEELER", "KA-02-AB-7719", 30.0, true, 12.9982, 77.5714, 54));
+        }
+
+        // 5. Vikramaditya Rao
+        if (!userRepository.existsByEmail("volunteer.vikram@mealmesh.org")) {
+            User u = new User(null, "volunteer.vikram@mealmesh.org", encodedPassword, "Vikramaditya Rao", "+91 98453 44015", "VOLUNTEER");
+            u.setVerified(true);
+            u = userRepository.save(u);
+            locationRepository.save(new Location(null, u, "Vikram Logistics Hub", "Silk Board Corridor", "Bengaluru", "560068", 12.9175, 77.6230));
+            volunteerProfileRepository.save(new VolunteerProfile(null, u, "FOUR_WHEELER", "KA-51-MD-9002", 450.0, true, 12.9175, 77.6230, 112));
+        }
+
+        // 6. Deepa R. Nair
+        if (!userRepository.existsByEmail("volunteer.deepa@mealmesh.org")) {
+            User u = new User(null, "volunteer.deepa@mealmesh.org", encodedPassword, "Deepa R. Nair", "+91 98453 44018", "VOLUNTEER");
+            u.setVerified(true);
+            u = userRepository.save(u);
+            locationRepository.save(new Location(null, u, "Deepa Hub E-City", "Phase 1, Electronic City", "Bengaluru", "560100", 12.8452, 77.6602));
+            volunteerProfileRepository.save(new VolunteerProfile(null, u, "TWO_WHEELER", "KA-01-HG-3301", 30.0, true, 12.8452, 77.6602, 29));
+        }
     }
 }
