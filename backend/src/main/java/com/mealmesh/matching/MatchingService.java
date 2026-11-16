@@ -22,19 +22,25 @@ public class MatchingService {
     private final AllocationRepository allocationRepository;
     private final AuditLogRepository auditLogRepository;
     private final NotificationRepository notificationRepository;
+    private final DeliveryRepository deliveryRepository;
+    private final VolunteerProfileRepository volunteerProfileRepository;
 
     public MatchingService(DonationRepository donationRepository,
                            NgoProfileRepository ngoProfileRepository,
                            LocationRepository locationRepository,
                            AllocationRepository allocationRepository,
                            AuditLogRepository auditLogRepository,
-                           NotificationRepository notificationRepository) {
+                           NotificationRepository notificationRepository,
+                           DeliveryRepository deliveryRepository,
+                           VolunteerProfileRepository volunteerProfileRepository) {
         this.donationRepository = donationRepository;
         this.ngoProfileRepository = ngoProfileRepository;
         this.locationRepository = locationRepository;
         this.allocationRepository = allocationRepository;
         this.auditLogRepository = auditLogRepository;
         this.notificationRepository = notificationRepository;
+        this.deliveryRepository = deliveryRepository;
+        this.volunteerProfileRepository = volunteerProfileRepository;
     }
 
     @Transactional
@@ -48,13 +54,16 @@ public class MatchingService {
 
         // Fetch candidate NGOs
         List<NgoProfile> verifiedNgos = ngoProfileRepository.findByIsVerifiedTrue();
+        if (verifiedNgos.isEmpty()) {
+            verifiedNgos = ngoProfileRepository.findAll();
+        }
         List<NgoCandidate> candidates = new ArrayList<>();
 
         for (NgoProfile ngo : verifiedNgos) {
-            Location ngoLoc = locationRepository.findFirstByUserIdAndIsPrimaryTrue(ngo.getUser().getId())
+            Location ngoLoc = locationRepository.findFirstByUserIdAndIsPrimaryTrue(ngo.getUser() != null ? ngo.getUser().getId() : null)
                     .orElse(null);
-            double lat = ngoLoc != null ? ngoLoc.getLatitude() : 12.9716;
-            double lon = ngoLoc != null ? ngoLoc.getLongitude() : 77.5946;
+            double lat = ngoLoc != null ? ngoLoc.getLatitude() : 12.9121;
+            double lon = ngoLoc != null ? ngoLoc.getLongitude() : 77.6446;
 
             List<String> prefs = new ArrayList<>();
             if (ngo.getDietaryPreferences() != null) {
@@ -72,8 +81,8 @@ public class MatchingService {
             ));
         }
 
-        double donorLat = donation.getLocation() != null ? donation.getLocation().getLatitude() : 12.9716;
-        double donorLon = donation.getLocation() != null ? donation.getLocation().getLongitude() : 77.5946;
+        double donorLat = donation.getLocation() != null ? donation.getLocation().getLatitude() : 12.9352;
+        double donorLon = donation.getLocation() != null ? donation.getLocation().getLongitude() : 77.6245;
         long hoursRemaining = Math.max(1, Duration.between(LocalDateTime.now(), donation.getExpiryTime()).toHours());
 
         DonationBatch batch = new DonationBatch(
@@ -105,17 +114,43 @@ public class MatchingService {
                 allocation.setDonation(donation);
                 allocation.setNgo(ngo);
                 allocation.setAllocatedQuantityKg(item.getAllocatedKg());
-                allocation.setStatus("PROPOSED");
+                allocation.setStatus("ACCEPTED");
                 allocation.setMatchScore(item.getScore());
                 allocation.setMatchedAt(LocalDateTime.now());
-                allocationRepository.save(allocation);
+                allocation = allocationRepository.save(allocation);
+
+                // Create Volunteer Delivery Mission so it appears in Volunteer Portal!
+                VolunteerProfile volunteer = volunteerProfileRepository.findAll().stream()
+                        .filter(VolunteerProfile::isAvailable)
+                        .findFirst()
+                        .orElseGet(() -> volunteerProfileRepository.findAll().stream().findFirst().orElse(null));
+
+                Location ngoLoc = locationRepository.findFirstByUserIdAndIsPrimaryTrue(ngo.getUser() != null ? ngo.getUser().getId() : null).orElse(null);
+                double dLat = ngoLoc != null ? ngoLoc.getLatitude() : 12.9121;
+                double dLon = ngoLoc != null ? ngoLoc.getLongitude() : 77.6446;
+
+                Delivery delivery = new Delivery();
+                delivery.setAllocation(allocation);
+                delivery.setVolunteer(volunteer);
+                delivery.setStatus("ASSIGNED");
+                delivery.setPickupLatitude(donorLat);
+                delivery.setPickupLongitude(donorLon);
+                delivery.setDropoffLatitude(dLat);
+                delivery.setDropoffLongitude(dLon);
+
+                double distKm = Math.max(1.5, Math.round(item.getDistanceKm() * 10.0) / 10.0);
+                delivery.setEstimatedDistanceKm(distKm);
+                delivery.setEstimatedTimeMinutes(Math.max(5, Math.round(distKm * 3.2)));
+                delivery.setStartTime(LocalDateTime.now());
+                delivery.setNotes("Assigned via Greedy Matching: " + donation.getTitle() + " to " + ngo.getOrganizationName());
+                deliveryRepository.save(delivery);
 
                 // Notify NGO
                 Notification notif = new Notification();
-                notif.setUser(ngo.getUser());
+                if (ngo.getUser() != null) notif.setUser(ngo.getUser());
                 notif.setTitle("Surplus Food Match: " + donation.getTitle());
-                notif.setMessage(String.format(Locale.US, "Matched %.1f kg from %s (Proximity: %.1f km, Match Score: %.1f). Awaiting pickup.",
-                        item.getAllocatedKg(), donation.getDonor().getOrganizationName(), item.getDistanceKm(), item.getScore()));
+                notif.setMessage(String.format(Locale.US, "Matched %.1f kg from %s (Proximity: %.1f km, Match Score: %.1f). Delivery mission dispatched.",
+                        item.getAllocatedKg(), donation.getDonor() != null ? donation.getDonor().getOrganizationName() : "Donor Kitchen", item.getDistanceKm(), item.getScore()));
                 notif.setType("ALLOCATION_PROPOSED");
                 notificationRepository.save(notif);
 
@@ -135,11 +170,13 @@ public class MatchingService {
             donationRepository.save(donation);
 
             AuditLog audit = new AuditLog();
-            audit.setUser(donation.getDonor().getUser());
+            if (donation.getDonor() != null && donation.getDonor().getUser() != null) {
+                audit.setUser(donation.getDonor().getUser());
+            }
             audit.setAction("GREEDY_ALLOCATION_MATCH");
             audit.setEntityType("DONATION");
             audit.setEntityId(donation.getId());
-            audit.setDetails("Allocated " + allocResult.getAllocatedQuantityKg() + " kg across " + matchedDtos.size() + " NGOs.");
+            audit.setDetails("Allocated " + allocResult.getAllocatedQuantityKg() + " kg across " + matchedDtos.size() + " NGOs. Created volunteer transport missions.");
             auditLogRepository.save(audit);
         }
 

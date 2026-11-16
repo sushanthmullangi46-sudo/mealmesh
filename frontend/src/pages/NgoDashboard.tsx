@@ -69,10 +69,10 @@ export const NgoDashboard: React.FC = () => {
   const handleClaimDonation = async (donationId: string) => {
     setClaimingId(donationId);
     try {
-      const res = await api.matchDonation(donationId);
-      setMessage(`Allocated ${res.allocatedKg} kg! Greedy score computed.`);
+      const res = await api.claimDonation(donationId);
+      setMessage(`Surplus food claimed successfully! New transport mission dispatched to Volunteer Fleet (~${res.estimatedDistanceKm || 4.5} km).`);
       loadData();
-      setTimeout(() => setMessage(null), 4000);
+      setTimeout(() => setMessage(null), 5000);
     } catch (err: any) {
       alert('Claim failed: ' + err.message);
     } finally {

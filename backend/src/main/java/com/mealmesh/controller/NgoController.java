@@ -2,6 +2,7 @@ package com.mealmesh.controller;
 
 import com.mealmesh.dto.ApiResponse;
 import com.mealmesh.dto.AllocationResponseDto;
+import com.mealmesh.dto.DeliveryResponseDto;
 import com.mealmesh.dto.NgoProfileResponseDto;
 import com.mealmesh.service.NgoService;
 import org.springframework.http.ResponseEntity;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/ngo")
@@ -53,5 +55,18 @@ public class NgoController {
         String email = resolveEmail(authentication);
         List<AllocationResponseDto> list = ngoService.getAllocationsForNgo(email);
         return ResponseEntity.ok(ApiResponse.ok(list));
+    }
+
+    @PostMapping("/claim/{donationId}")
+    public ResponseEntity<ApiResponse<DeliveryResponseDto>> claimDonation(
+            Authentication authentication,
+            @PathVariable UUID donationId) {
+        try {
+            String email = resolveEmail(authentication);
+            DeliveryResponseDto delivery = ngoService.claimDonationForNgo(email, donationId);
+            return ResponseEntity.ok(ApiResponse.ok("Donation claimed successfully and dispatched to Volunteer Fleet!", delivery));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
     }
 }

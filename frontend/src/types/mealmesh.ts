@@ -51,6 +51,8 @@ export interface NgoProfile {
 
 export interface VolunteerProfile {
   id: string;
+  fullName?: string;
+  phone?: string;
   vehicleType: string;
   vehicleNumber: string;
   maxCarryingCapacityKg: number;

@@ -106,6 +106,28 @@ export const api = {
     return json.data;
   },
 
+  async claimDonation(donationId: string) {
+    let headers = getAuthHeader();
+    if (!headers.Authorization) {
+      try {
+        await api.demoLogin('NGO');
+        headers = getAuthHeader();
+      } catch (e) {
+        console.warn('Auto demo login for NGO failed:', e);
+      }
+    }
+    const res = await fetch(`${API_BASE}/ngo/claim/${donationId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...headers,
+      },
+    });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.message || 'Claim failed');
+    return json.data;
+  },
+
   // Routing
   async getWaypoints(): Promise<RouteWaypoint[]> {
     const res = await fetch(`${API_BASE}/routing/waypoints`);
@@ -212,6 +234,32 @@ export const api = {
     const res = await fetch(`${API_BASE}/admin/audit-logs`, { headers: getAuthHeader() });
     const json = await res.json();
     return json.data || [];
+  },
+
+  async getFleetDeliveries(): Promise<Delivery[]> {
+    const res = await fetch(`${API_BASE}/admin/fleet-deliveries`, { headers: getAuthHeader() });
+    const json = await res.json();
+    return json.success ? json.data : [];
+  },
+
+  async simulateUrgentDonation(): Promise<Donation> {
+    const res = await fetch(`${API_BASE}/admin/simulate-urgent-donation`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+    });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.message || 'Simulation failed');
+    return json.data;
+  },
+
+  async broadcastFleetAlert(message?: string): Promise<string> {
+    const res = await fetch(`${API_BASE}/admin/broadcast-fleet-alert`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+      body: JSON.stringify({ message: message || 'High priority dispatch alert.' }),
+    });
+    const json = await res.json();
+    return json.message;
   },
 
   // Analytics

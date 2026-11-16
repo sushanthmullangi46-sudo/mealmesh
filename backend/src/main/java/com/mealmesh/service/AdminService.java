@@ -1,6 +1,7 @@
 package com.mealmesh.service;
 
 import com.mealmesh.dsa.stack.CustomStack;
+import com.mealmesh.dto.NgoProfileResponseDto;
 import com.mealmesh.entity.AuditLog;
 import com.mealmesh.entity.NgoProfile;
 import com.mealmesh.entity.User;
@@ -12,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class AdminService {
@@ -33,12 +35,14 @@ public class AdminService {
         return userRepository.findAll();
     }
 
-    public List<NgoProfile> getAllNgos() {
-        return ngoProfileRepository.findAll();
+    public List<NgoProfileResponseDto> getAllNgos() {
+        return ngoProfileRepository.findAll().stream()
+                .map(NgoProfileResponseDto::fromEntity)
+                .collect(Collectors.toList());
     }
 
     @Transactional
-    public NgoProfile toggleNgoVerification(UUID ngoId, boolean verified) {
+    public NgoProfileResponseDto toggleNgoVerification(UUID ngoId, boolean verified) {
         NgoProfile ngo = ngoProfileRepository.findById(ngoId)
                 .orElseThrow(() -> new IllegalArgumentException("NGO not found: " + ngoId));
         boolean oldVal = ngo.isVerified();
@@ -55,7 +59,7 @@ public class AdminService {
         log.setDetails("Toggled NGO '" + ngo.getOrganizationName() + "' verification to: " + verified);
         auditLogRepository.save(log);
 
-        return ngo;
+        return NgoProfileResponseDto.fromEntity(ngo);
     }
 
     @Transactional
