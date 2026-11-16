@@ -53,6 +53,7 @@ public class DataInitializer implements CommandLineRunner {
     public void run(String... args) {
         String encodedPassword = passwordEncoder.encode("demo123");
         ensureAdditionalVolunteers(encodedPassword);
+        ensureFreshSurplusDonations();
 
         if (userRepository.count() > 8) {
             return; // Already initialized
@@ -268,5 +269,141 @@ public class DataInitializer implements CommandLineRunner {
             locationRepository.save(new Location(null, u, "Deepa Hub E-City", "Phase 1, Electronic City", "Bengaluru", "560100", 12.8452, 77.6602));
             volunteerProfileRepository.save(new VolunteerProfile(null, u, "TWO_WHEELER", "KA-01-HG-3301", 30.0, true, 12.8452, 77.6602, 29));
         }
+    }
+
+    private void ensureFreshSurplusDonations() {
+        if (donationRepository.count() > 0 && donationRepository.findAvailableActiveDonations(LocalDateTime.now()).size() >= 3) {
+            return;
+        }
+
+        DonorProfile donor1 = donorProfileRepository.findAll().stream().findFirst().orElse(null);
+        if (donor1 == null) return;
+
+        FoodCategory catCooked = foodCategoryRepository.findByNameIgnoreCase("Cooked Meals")
+                .orElseGet(() -> foodCategoryRepository.findAll().stream().findFirst().orElse(null));
+        FoodCategory catBakery = foodCategoryRepository.findByNameIgnoreCase("Bakery Items")
+                .orElse(catCooked);
+
+        Location loc1 = locationRepository.findAll().stream().findFirst().orElse(null);
+
+        // 1. Basmati Veg Biryani
+        Donation d1 = new Donation();
+        d1.setDonor(donor1);
+        d1.setCategory(catCooked);
+        d1.setLocation(loc1);
+        d1.setTitle("Basmati Veg Biryani with Paneer Butter Masala");
+        d1.setDescription("Wholesome hot lunch buffet surplus, stored in insulated warm containers.");
+        d1.setFoodType("COOKED");
+        d1.setDietaryType("VEG");
+        d1.setQuantityKg(35.0);
+        d1.setServings(90);
+        d1.setCookedTime(LocalDateTime.now().minusHours(1));
+        d1.setExpiryTime(LocalDateTime.now().plusHours(4));
+        d1.setUrgency("HIGH");
+        d1.setStatus("AVAILABLE");
+        d1.setStorageTemperatureCelsius(65.0);
+        d1.setAllergenInfo("Contains Dairy, Nuts");
+        d1.setPickupInstructions("Collect from kitchen rear dispatch counter");
+        donationRepository.save(d1);
+
+        // 2. South Indian Sambar & Rice
+        Donation d2 = new Donation();
+        d2.setDonor(donor1);
+        d2.setCategory(catCooked);
+        d2.setLocation(loc1);
+        d2.setTitle("South Indian Sambar, Rice & Vegetable Poriyal");
+        d2.setDescription("Freshly cooked meals packed in food-grade insulated vessels.");
+        d2.setFoodType("COOKED");
+        d2.setDietaryType("VEG");
+        d2.setQuantityKg(25.0);
+        d2.setServings(65);
+        d2.setCookedTime(LocalDateTime.now().minusHours(1));
+        d2.setExpiryTime(LocalDateTime.now().plusHours(2));
+        d2.setUrgency("CRITICAL");
+        d2.setStatus("AVAILABLE");
+        d2.setStorageTemperatureCelsius(68.0);
+        d2.setAllergenInfo("None");
+        d2.setPickupInstructions("Collect from Gate 2 banquet ramp");
+        donationRepository.save(d2);
+
+        // 3. Fresh Artisanal Breads & Rolls
+        Donation d3 = new Donation();
+        d3.setDonor(donor1);
+        d3.setCategory(catBakery);
+        d3.setLocation(loc1);
+        d3.setTitle("Fresh Multigrain Sourdough Loaves & Buns");
+        d3.setDescription("Freshly baked bakery items in sealed hygienic packets.");
+        d3.setFoodType("PACKAGED");
+        d3.setDietaryType("VEG");
+        d3.setQuantityKg(20.0);
+        d3.setServings(50);
+        d3.setCookedTime(LocalDateTime.now().minusHours(2));
+        d3.setExpiryTime(LocalDateTime.now().plusHours(6));
+        d3.setUrgency("HIGH");
+        d3.setStatus("AVAILABLE");
+        d3.setStorageTemperatureCelsius(24.0);
+        d3.setAllergenInfo("Contains Gluten");
+        d3.setPickupInstructions("Collect from storefront bakery display counter");
+        donationRepository.save(d3);
+
+        // 4. Chapathi with Dal Tadka
+        Donation d4 = new Donation();
+        d4.setDonor(donor1);
+        d4.setCategory(catCooked);
+        d4.setLocation(loc1);
+        d4.setTitle("Soft Wheat Chapathi with Dal Tadka & Jeera Rice");
+        d4.setDescription("Nutritious warm surplus, perfect for community shelter distribution.");
+        d4.setFoodType("COOKED");
+        d4.setDietaryType("VEG");
+        d4.setQuantityKg(30.0);
+        d4.setServings(75);
+        d4.setCookedTime(LocalDateTime.now().minusMinutes(45));
+        d4.setExpiryTime(LocalDateTime.now().plusHours(5));
+        d4.setUrgency("HIGH");
+        d4.setStatus("AVAILABLE");
+        d4.setStorageTemperatureCelsius(62.0);
+        d4.setAllergenInfo("Contains Gluten");
+        d4.setPickupInstructions("Collect from central commissary loading dock");
+        donationRepository.save(d4);
+
+        // 5. Fresh Idli & Medu Vada
+        Donation d5 = new Donation();
+        d5.setDonor(donor1);
+        d5.setCategory(catCooked);
+        d5.setLocation(loc1);
+        d5.setTitle("Hot Steamed Idli & Medu Vada with Coconut Chutney");
+        d5.setDescription("Fresh breakfast batch, ready for immediate distribution.");
+        d5.setFoodType("COOKED");
+        d5.setDietaryType("VEG");
+        d5.setQuantityKg(18.0);
+        d5.setServings(50);
+        d5.setCookedTime(LocalDateTime.now().minusMinutes(30));
+        d5.setExpiryTime(LocalDateTime.now().plusHours(2));
+        d5.setUrgency("CRITICAL");
+        d5.setStatus("AVAILABLE");
+        d5.setStorageTemperatureCelsius(66.0);
+        d5.setAllergenInfo("Contains Dairy");
+        d5.setPickupInstructions("Collect from quick-service dispatch counter");
+        donationRepository.save(d5);
+
+        // 6. Fragrant Vegetable Pulao
+        Donation d6 = new Donation();
+        d6.setDonor(donor1);
+        d6.setCategory(catCooked);
+        d6.setLocation(loc1);
+        d6.setTitle("Fragrant Vegetable Pulao with Cucumber Raita");
+        d6.setDescription("Mildly spiced wholesome rice dish suitable for all beneficiaries.");
+        d6.setFoodType("COOKED");
+        d6.setDietaryType("VEG");
+        d6.setQuantityKg(40.0);
+        d6.setServings(100);
+        d6.setCookedTime(LocalDateTime.now().minusHours(1));
+        d6.setExpiryTime(LocalDateTime.now().plusHours(4));
+        d6.setUrgency("HIGH");
+        d6.setStatus("AVAILABLE");
+        d6.setStorageTemperatureCelsius(64.0);
+        d6.setAllergenInfo("Contains Dairy");
+        d6.setPickupInstructions("Collect from main kitchen dispatch counter");
+        donationRepository.save(d6);
     }
 }

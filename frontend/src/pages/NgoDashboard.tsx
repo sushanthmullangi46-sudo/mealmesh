@@ -110,14 +110,37 @@ export const NgoDashboard: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={loadData}
-          disabled={loading}
-          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition shadow-sm"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          Refresh Feed
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={async () => {
+              setLoading(true);
+              try {
+                await api.simulateUrgentDonation();
+                setMessage('⚡ Fresh urgent surplus food batch simulated and added to feed!');
+                setTimeout(() => setMessage(null), 4000);
+                await loadData();
+              } catch (e: any) {
+                console.error(e);
+              } finally {
+                setLoading(false);
+              }
+            }}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition shadow-sm"
+          >
+            <Zap className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Generate Surplus Batch</span>
+          </button>
+
+          <button
+            onClick={loadData}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition shadow-sm"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            Refresh Feed
+          </button>
+        </div>
       </div>
 
       {message && (
