@@ -1,6 +1,17 @@
 import React from 'react';
 import { UserSession, UserRole } from '../types/mealmesh';
-import { Utensils, HeartHandshake, ShieldCheck, MapPin, Activity, Cpu, LogOut, ChevronRight, BarChart3, Bike } from 'lucide-react';
+import {
+  Utensils,
+  HeartHandshake,
+  ShieldCheck,
+  Bike,
+  Cpu,
+  BarChart3,
+  LogOut,
+  KeyRound,
+  User,
+  ArrowRightLeft,
+} from 'lucide-react';
 
 interface NavbarProps {
   currentView: string;
@@ -124,54 +135,57 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           </nav>
 
-          {/* Quick Demo Switcher & Session Controls */}
-          <div className="flex items-center gap-2">
+          {/* Authentication & Persona Control */}
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={() => onNavigate('login')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition border ${
+                currentView === 'login'
+                  ? 'bg-emerald-400 text-emerald-950 border-emerald-300 shadow-md'
+                  : 'bg-emerald-900/60 text-emerald-200 border-emerald-700/60 hover:bg-emerald-800 hover:text-white'
+              }`}
+            >
+              <KeyRound className="w-3.5 h-3.5 text-amber-300" />
+              <span>Login / Personas</span>
+            </button>
+
             {currentUser ? (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 pl-2 border-l border-emerald-800/80">
                 <div className="text-right hidden sm:block">
-                  <p className="text-xs font-bold text-white leading-none">{currentUser.fullName}</p>
-                  <span className="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase">
+                  <p className="text-xs font-bold text-white leading-none truncate max-w-[140px]">
+                    {currentUser.fullName}
+                  </p>
+                  <span
+                    className={`text-[9px] font-extrabold tracking-wider uppercase px-1.5 py-0.2 rounded mt-0.5 inline-block ${
+                      currentUser.role === 'ADMIN'
+                        ? 'bg-purple-900/80 text-purple-200'
+                        : currentUser.role === 'DONOR'
+                        ? 'bg-emerald-900/80 text-emerald-300'
+                        : currentUser.role === 'NGO'
+                        ? 'bg-blue-900/80 text-blue-200'
+                        : 'bg-amber-900/80 text-amber-200'
+                    }`}
+                  >
                     {currentUser.role}
                   </span>
                 </div>
+
                 <button
                   onClick={onLogout}
-                  title="Log out"
+                  title="Sign out of account"
                   className="p-1.5 text-emerald-300 hover:text-white hover:bg-emerald-900 rounded-lg transition"
                 >
                   <LogOut className="w-4 h-4" />
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-1.5 bg-emerald-900/70 p-1 rounded-xl border border-emerald-800">
-                <span className="text-[10px] uppercase font-bold text-emerald-300 px-1 hidden lg:inline">
-                  Demo as:
-                </span>
-                <button
-                  onClick={() => onDemoLogin('DONOR')}
-                  className="px-2 py-1 text-[11px] font-semibold rounded bg-emerald-800/80 hover:bg-emerald-700 text-emerald-100 transition"
-                >
-                  Donor
-                </button>
-                <button
-                  onClick={() => onDemoLogin('NGO')}
-                  className="px-2 py-1 text-[11px] font-semibold rounded bg-blue-900/60 hover:bg-blue-800 text-blue-100 transition"
-                >
-                  NGO
-                </button>
-                <button
-                  onClick={() => onDemoLogin('VOLUNTEER')}
-                  className="px-2 py-1 text-[11px] font-semibold rounded bg-amber-900/60 hover:bg-amber-800 text-amber-100 transition"
-                >
-                  Volunteer
-                </button>
-                <button
-                  onClick={() => onDemoLogin('ADMIN')}
-                  className="px-2 py-1 text-[11px] font-semibold rounded bg-slate-800 hover:bg-slate-700 text-slate-100 transition"
-                >
-                  Admin
-                </button>
-              </div>
+              <button
+                onClick={() => onNavigate('login')}
+                className="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-emerald-950 font-bold text-xs shadow-md transition flex items-center gap-1.5"
+              >
+                <User className="w-3.5 h-3.5" />
+                <span>Sign In</span>
+              </button>
             )}
           </div>
         </div>

@@ -41,6 +41,28 @@ export const api = {
     return json.data;
   },
 
+  async register(data: {
+    email: string;
+    password: string;
+    fullName: string;
+    phone?: string;
+    role: string;
+    organizationName?: string;
+    organizationType?: string;
+    address?: string;
+  }): Promise<UserSession> {
+    const res = await fetch(`${API_BASE}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.message || 'Registration failed');
+    localStorage.setItem('mealmesh_token', json.data.token);
+    localStorage.setItem('mealmesh_user', JSON.stringify(json.data));
+    return json.data;
+  },
+
   logout() {
     localStorage.removeItem('mealmesh_token');
     localStorage.removeItem('mealmesh_user');
