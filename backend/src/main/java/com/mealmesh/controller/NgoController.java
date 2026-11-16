@@ -1,8 +1,8 @@
 package com.mealmesh.controller;
 
 import com.mealmesh.dto.ApiResponse;
-import com.mealmesh.entity.Allocation;
-import com.mealmesh.entity.NgoProfile;
+import com.mealmesh.dto.AllocationResponseDto;
+import com.mealmesh.dto.NgoProfileResponseDto;
 import com.mealmesh.service.NgoService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -21,28 +21,37 @@ public class NgoController {
         this.ngoService = ngoService;
     }
 
+    private String resolveEmail(Authentication authentication) {
+        if (authentication == null) return "ngo.akshayapatra@mealmesh.org";
+        String name = authentication.getName();
+        if (name == null || !name.contains("@") || name.startsWith("com.mealmesh.")) {
+            return "ngo.akshayapatra@mealmesh.org";
+        }
+        return name.trim().toLowerCase();
+    }
+
     @GetMapping("/profile")
-    public ResponseEntity<ApiResponse<NgoProfile>> getProfile(Authentication authentication) {
-        String email = authentication != null ? authentication.getName() : "ngo.akshayapatra@mealmesh.org";
-        NgoProfile ngo = ngoService.getNgoProfile(email);
+    public ResponseEntity<ApiResponse<NgoProfileResponseDto>> getProfile(Authentication authentication) {
+        String email = resolveEmail(authentication);
+        NgoProfileResponseDto ngo = ngoService.getNgoProfile(email);
         return ResponseEntity.ok(ApiResponse.ok(ngo));
     }
 
     @PostMapping("/capacity")
-    public ResponseEntity<ApiResponse<NgoProfile>> updateCapacity(
+    public ResponseEntity<ApiResponse<NgoProfileResponseDto>> updateCapacity(
             Authentication authentication,
             @RequestBody Map<String, Double> payload) {
-        String email = authentication != null ? authentication.getName() : "ngo.akshayapatra@mealmesh.org";
+        String email = resolveEmail(authentication);
         double current = payload.getOrDefault("currentKg", 0.0);
         double max = payload.getOrDefault("maxKg", 200.0);
-        NgoProfile updated = ngoService.updateStorageCapacity(email, current, max);
+        NgoProfileResponseDto updated = ngoService.updateStorageCapacity(email, current, max);
         return ResponseEntity.ok(ApiResponse.ok("Storage capacity updated", updated));
     }
 
     @GetMapping("/allocations")
-    public ResponseEntity<ApiResponse<List<Allocation>>> getAllocations(Authentication authentication) {
-        String email = authentication != null ? authentication.getName() : "ngo.akshayapatra@mealmesh.org";
-        List<Allocation> list = ngoService.getAllocationsForNgo(email);
+    public ResponseEntity<ApiResponse<List<AllocationResponseDto>>> getAllocations(Authentication authentication) {
+        String email = resolveEmail(authentication);
+        List<AllocationResponseDto> list = ngoService.getAllocationsForNgo(email);
         return ResponseEntity.ok(ApiResponse.ok(list));
     }
 }

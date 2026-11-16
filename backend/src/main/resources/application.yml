@@ -9,6 +9,8 @@ spring:
   jackson:
     time-zone: Asia/Kolkata
     date-format: yyyy-MM-dd'T'HH:mm:ss.SSSXXX
+    serialization:
+      fail-on-empty-beans: false
   jpa:
     open-in-view: true
     hibernate:

@@ -1,5 +1,7 @@
 package com.mealmesh.service;
 
+import com.mealmesh.dto.DeliveryResponseDto;
+import com.mealmesh.dto.VolunteerProfileResponseDto;
 import com.mealmesh.entity.Delivery;
 import com.mealmesh.entity.VolunteerProfile;
 import com.mealmesh.repository.DeliveryRepository;
@@ -10,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional(readOnly = true)
@@ -24,16 +27,16 @@ public class VolunteerService {
         this.volunteerProfileRepository = volunteerProfileRepository;
     }
 
-    public List<Delivery> getVolunteerDeliveries(String userEmail) {
+    public List<DeliveryResponseDto> getVolunteerDeliveries(String userEmail) {
         List<Delivery> list = deliveryRepository.findByVolunteerUserEmail(userEmail);
         if (list.isEmpty()) {
             list = deliveryRepository.findAll();
         }
-        return list;
+        return list.stream().map(DeliveryResponseDto::fromEntity).collect(Collectors.toList());
     }
 
     @Transactional
-    public Delivery updateDeliveryStatus(UUID deliveryId, String newStatus) {
+    public DeliveryResponseDto updateDeliveryStatus(UUID deliveryId, String newStatus) {
         Delivery delivery = deliveryRepository.findById(deliveryId)
                 .orElseThrow(() -> new IllegalArgumentException("Delivery not found: " + deliveryId));
 
@@ -54,11 +57,13 @@ public class VolunteerService {
             }
         }
 
-        return deliveryRepository.save(delivery);
+        Delivery saved = deliveryRepository.save(delivery);
+        return DeliveryResponseDto.fromEntity(saved);
     }
 
-    public VolunteerProfile getVolunteerProfile(String userEmail) {
-        return volunteerProfileRepository.findByUserEmail(userEmail)
+    public VolunteerProfileResponseDto getVolunteerProfile(String userEmail) {
+        VolunteerProfile profile = volunteerProfileRepository.findByUserEmail(userEmail)
                 .orElseGet(() -> volunteerProfileRepository.findAll().stream().findFirst().orElse(null));
+        return VolunteerProfileResponseDto.fromEntity(profile);
     }
 }

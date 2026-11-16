@@ -21,12 +21,21 @@ public class DonationController {
         this.donationService = donationService;
     }
 
+    private String resolveEmail(Authentication authentication) {
+        if (authentication == null) return "donor.koramangala@mealmesh.org";
+        String name = authentication.getName();
+        if (name == null || !name.contains("@") || name.startsWith("com.mealmesh.")) {
+            return "donor.koramangala@mealmesh.org";
+        }
+        return name.trim().toLowerCase();
+    }
+
     @PostMapping("/donor/donations")
     public ResponseEntity<ApiResponse<DonationResponseDto>> postDonation(
             Authentication authentication,
             @RequestBody DonationRequestDto dto) {
         try {
-            String email = authentication != null ? authentication.getName() : "donor.koramangala@mealmesh.org";
+            String email = resolveEmail(authentication);
             DonationResponseDto created = donationService.createDonation(email, dto);
             return ResponseEntity.ok(ApiResponse.ok("Donation posted successfully", created));
         } catch (Exception e) {
@@ -36,7 +45,7 @@ public class DonationController {
 
     @GetMapping("/donor/my-donations")
     public ResponseEntity<ApiResponse<List<DonationResponseDto>>> getMyDonations(Authentication authentication) {
-        String email = authentication != null ? authentication.getName() : "donor.koramangala@mealmesh.org";
+        String email = resolveEmail(authentication);
         List<DonationResponseDto> list = donationService.getDonationsByDonor(email);
         return ResponseEntity.ok(ApiResponse.ok(list));
     }

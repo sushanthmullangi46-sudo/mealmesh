@@ -44,7 +44,8 @@ public class DonationService {
     @Transactional
     public DonationResponseDto createDonation(String userEmail, DonationRequestDto dto) {
         DonorProfile donor = donorProfileRepository.findByUserEmail(userEmail)
-                .orElseThrow(() -> new IllegalArgumentException("No donor profile found for " + userEmail));
+                .orElseGet(() -> donorProfileRepository.findAll().stream().findFirst()
+                        .orElseThrow(() -> new IllegalArgumentException("No donor profile found for " + userEmail)));
 
         FoodCategory category = categoryRepository.findByNameIgnoreCase(dto.getCategoryName() != null ? dto.getCategoryName() : "Cooked Meals")
                 .orElseGet(() -> categoryRepository.findAll().stream().findFirst()

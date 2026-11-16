@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { LandingPage } from './pages/LandingPage';
@@ -14,6 +14,12 @@ import { UserSession, UserRole } from './types/mealmesh';
 export function App() {
   const [currentView, setCurrentView] = useState<string>('landing');
   const [currentUser, setCurrentUser] = useState<UserSession | null>(() => api.getCurrentUser());
+
+  useEffect(() => {
+    if (!currentUser) {
+      api.demoLogin('DONOR').then(setCurrentUser).catch(() => {});
+    }
+  }, []);
 
   const handleNavigate = (view: string) => {
     setCurrentView(view);

@@ -1,10 +1,12 @@
 package com.mealmesh.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import java.util.UUID;
 
 @Entity
 @Table(name = "food_categories")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class FoodCategory {
 
     @Id

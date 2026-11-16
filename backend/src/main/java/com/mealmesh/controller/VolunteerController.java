@@ -1,8 +1,8 @@
 package com.mealmesh.controller;
 
 import com.mealmesh.dto.ApiResponse;
-import com.mealmesh.entity.Delivery;
-import com.mealmesh.entity.VolunteerProfile;
+import com.mealmesh.dto.DeliveryResponseDto;
+import com.mealmesh.dto.VolunteerProfileResponseDto;
 import com.mealmesh.service.VolunteerService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -22,20 +22,29 @@ public class VolunteerController {
         this.volunteerService = volunteerService;
     }
 
+    private String resolveEmail(Authentication authentication) {
+        if (authentication == null) return "volunteer.rahul@mealmesh.org";
+        String name = authentication.getName();
+        if (name == null || !name.contains("@") || name.startsWith("com.mealmesh.")) {
+            return "volunteer.rahul@mealmesh.org";
+        }
+        return name.trim().toLowerCase();
+    }
+
     @GetMapping("/deliveries")
-    public ResponseEntity<ApiResponse<List<Delivery>>> getDeliveries(Authentication authentication) {
-        String email = authentication != null ? authentication.getName() : "volunteer.rahul@mealmesh.org";
-        List<Delivery> deliveries = volunteerService.getVolunteerDeliveries(email);
+    public ResponseEntity<ApiResponse<List<DeliveryResponseDto>>> getDeliveries(Authentication authentication) {
+        String email = resolveEmail(authentication);
+        List<DeliveryResponseDto> deliveries = volunteerService.getVolunteerDeliveries(email);
         return ResponseEntity.ok(ApiResponse.ok(deliveries));
     }
 
     @PatchMapping("/deliveries/{id}/status")
-    public ResponseEntity<ApiResponse<Delivery>> updateStatus(
+    public ResponseEntity<ApiResponse<DeliveryResponseDto>> updateStatus(
             @PathVariable UUID id,
             @RequestBody Map<String, String> payload) {
         try {
             String status = payload.getOrDefault("status", "ACCEPTED");
-            Delivery delivery = volunteerService.updateDeliveryStatus(id, status);
+            DeliveryResponseDto delivery = volunteerService.updateDeliveryStatus(id, status);
             return ResponseEntity.ok(ApiResponse.ok("Delivery status updated to " + status, delivery));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
@@ -43,9 +52,9 @@ public class VolunteerController {
     }
 
     @GetMapping("/profile")
-    public ResponseEntity<ApiResponse<VolunteerProfile>> getProfile(Authentication authentication) {
-        String email = authentication != null ? authentication.getName() : "volunteer.rahul@mealmesh.org";
-        VolunteerProfile profile = volunteerService.getVolunteerProfile(email);
+    public ResponseEntity<ApiResponse<VolunteerProfileResponseDto>> getProfile(Authentication authentication) {
+        String email = resolveEmail(authentication);
+        VolunteerProfileResponseDto profile = volunteerService.getVolunteerProfile(email);
         return ResponseEntity.ok(ApiResponse.ok(profile));
     }
 }

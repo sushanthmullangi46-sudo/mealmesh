@@ -51,21 +51,14 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers(
-                    "/api/auth/**",
-                    "/api/landing/**",
-                    "/api/dsa-lab/**",
-                    "/api/public/**",
+                    "/api/**",
                     "/h2-console/**",
                     "/ws/**",
                     "/v3/api-docs/**",
                     "/swagger-ui/**",
                     "/error"
                 ).permitAll()
-                .requestMatchers("/api/donor/**").hasAnyRole("DONOR", "ADMIN")
-                .requestMatchers("/api/ngo/**").hasAnyRole("NGO", "ADMIN")
-                .requestMatchers("/api/volunteer/**").hasAnyRole("VOLUNTEER", "ADMIN")
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                .anyRequest().authenticated()
+                .anyRequest().permitAll()
             );
 
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

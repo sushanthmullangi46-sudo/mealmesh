@@ -10,7 +10,7 @@ import {
   RouteWaypoint,
 } from '../types/mealmesh';
 
-const API_BASE = 'http://localhost:8080/api';
+const API_BASE = '/api';
 
 function getAuthHeader(): Record<string, string> {
   const token = localStorage.getItem('mealmesh_token');
@@ -73,11 +73,20 @@ export const api = {
   },
 
   async postDonation(data: Partial<Donation> & { hoursUntilExpiry?: number }): Promise<Donation> {
+    let headers = getAuthHeader();
+    if (!headers.Authorization) {
+      try {
+        await api.demoLogin('DONOR');
+        headers = getAuthHeader();
+      } catch (e) {
+        console.warn('Auto demo login failed:', e);
+      }
+    }
     const res = await fetch(`${API_BASE}/donor/donations`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...getAuthHeader(),
+        ...headers,
       },
       body: JSON.stringify(data),
     });
