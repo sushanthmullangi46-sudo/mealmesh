@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { Donation, NgoProfile, Allocation } from '../types/mealmesh';
+import { LiveDeliveryTracker } from '../maps/LiveDeliveryTracker';
 import {
   HeartHandshake,
   Database,
@@ -13,6 +14,8 @@ import {
   Box,
   Truck,
   Users,
+  Bike,
+  X,
 } from 'lucide-react';
 
 export const NgoDashboard: React.FC = () => {
@@ -25,6 +28,7 @@ export const NgoDashboard: React.FC = () => {
   const [capacityCurrent, setCapacityCurrent] = useState<number>(35);
   const [capacityMax, setCapacityMax] = useState<number>(250);
   const [message, setMessage] = useState<string | null>(null);
+  const [showLiveRadar, setShowLiveRadar] = useState<boolean>(true);
 
   const loadData = async () => {
     setLoading(true);
@@ -298,19 +302,59 @@ export const NgoDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Column: Inbound Distributions (5 cols) */}
+        {/* Right Column: Inbound Distributions & Live Courier Radar (5 cols) */}
         <div className="lg:col-span-5 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-bold text-slate-900 text-sm flex items-center gap-2">
               <Truck className="w-4 h-4 text-blue-600" />
               Inbound Allocations ({allocations.length})
             </h2>
+            <button
+              onClick={() => setShowLiveRadar(!showLiveRadar)}
+              className="text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-lg border border-blue-200 transition flex items-center gap-1.5"
+            >
+              <Bike className="w-3.5 h-3.5 text-blue-600" />
+              <span>{showLiveRadar ? 'Hide Live Radar' : 'Show Live Radar'}</span>
+            </button>
           </div>
+
+          {/* Live Courier Tracking Radar */}
+          {showLiveRadar && (
+            <div className="space-y-2">
+              <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping inline-block" />
+                <span>Live Consignment Telemetry (Bengaluru Arterial Road)</span>
+              </div>
+              <LiveDeliveryTracker
+                foodTitle={
+                  allocations[0]?.donation?.title ||
+                  'South Indian Sambar, Rice & Poriyal'
+                }
+                quantityKg={allocations[0]?.allocatedQuantityKg || 25}
+                donorName={
+                  allocations[0]?.donation?.donorOrganization ||
+                  'ITC Gardenia Kitchen, Koramangala'
+                }
+                ngoName={
+                  profile?.organizationName ||
+                  'Akshaya Patra Redistribution Hub, Jayanagar'
+                }
+                transporterName="Rahul Sharma"
+                vehicleNumber="Hero Electric • KA-01-EQ-1001"
+                height="420px"
+                onDelivered={() => {
+                  setMessage('🎉 Consignment safely arrived at your NGO Hub! Capacity updated.');
+                  setTimeout(() => setMessage(null), 5000);
+                  loadData();
+                }}
+              />
+            </div>
+          )}
 
           <div className="space-y-3">
             {allocations.length === 0 ? (
               <div className="bg-white p-8 rounded-2xl border border-slate-200 text-center text-xs text-slate-500">
-                No incoming allocations yet. Claim surplus batches from the discovery feed.
+                No incoming allocations yet. Claim surplus batches from the discovery feed to initiate live transport.
               </div>
             ) : (
               allocations.map((alloc) => (

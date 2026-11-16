@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { AnalyticsSummary, NgoProfile, Delivery } from '../types/mealmesh';
+import { LiveDeliveryTracker } from '../maps/LiveDeliveryTracker';
 import {
   ShieldCheck,
   RotateCcw,
@@ -711,7 +712,7 @@ export const AdminDashboard: React.FC = () => {
 
       {/* TAB 4: FLEET MISSIONS & LIVE TRANSPORT OVERSIGHT */}
       {activeTab === 'fleet' && (
-        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-5">
+        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
             <div>
               <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
@@ -719,7 +720,7 @@ export const AdminDashboard: React.FC = () => {
                 Fleet Missions & Real-Time Logistics
               </h2>
               <p className="text-xs text-slate-500">
-                End-to-end dispatch telemetry powered by Dijkstra shortest path routing.
+                Live dispatch tracking across Bengaluru arterial corridors with Dijkstra shortest path telemetry.
               </p>
             </div>
             <span className="text-xs font-mono font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-lg">
@@ -727,7 +728,34 @@ export const AdminDashboard: React.FC = () => {
             </span>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* Embedded Real-Time Swiggy/Zomato Style Delivery Radar */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold text-slate-800 flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                Live Courier Telemetry (Koramangala ➔ Jayanagar Hub)
+              </span>
+              <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                Automated Arrival & Handover Telemetry
+              </span>
+            </div>
+            <LiveDeliveryTracker
+              foodTitle={deliveries[0]?.allocation?.donation?.title || 'South Indian Sambar, Rice & Poriyal'}
+              quantityKg={deliveries[0]?.allocation?.allocatedQuantityKg || 25}
+              donorName={deliveries[0]?.allocation?.donation?.donorOrganization || 'ITC Gardenia Kitchen, Koramangala'}
+              ngoName={deliveries[0]?.allocation?.ngo?.organizationName || 'Akshaya Patra Redistribution Hub, Jayanagar'}
+              transporterName="Rahul Sharma"
+              vehicleNumber="Hero Electric Photon • KA-01-EQ-1001"
+              height="450px"
+              onDelivered={() => {
+                showNotification('Consignment safely reached destination. Telemetry sync complete!', 'info');
+                loadAllData();
+              }}
+            />
+          </div>
+
+          <div className="overflow-x-auto pt-2">
+            <h3 className="font-bold text-sm text-slate-900 mb-3">All Fleet Consignment Logs</h3>
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 text-slate-600 uppercase text-[10px] tracking-wider border-b border-slate-200">
                 <tr>
