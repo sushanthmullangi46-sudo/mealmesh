@@ -1,114 +1,181 @@
 import React from 'react';
-import { useNavigation } from '../hooks/useNavigationContext';
-import { api } from '../services/api';
-import {
-  Compass,
-  Moon,
-  Sun,
-  RotateCcw,
-  Cpu,
-  Layers,
-  MapPin,
-  CheckCircle2,
-  AlertTriangle
-} from 'lucide-react';
+import { UserSession, UserRole } from '../types/mealmesh';
+import { Utensils, HeartHandshake, ShieldCheck, MapPin, Activity, Cpu, LogOut, ChevronRight, BarChart3, Bike } from 'lucide-react';
 
-export const Navbar: React.FC = () => {
-  const {
-    isDarkMode,
-    toggleDarkMode,
-    stats,
-    refreshGraphData,
-    loading
-  } = useNavigation();
+interface NavbarProps {
+  currentView: string;
+  onNavigate: (view: string) => void;
+  currentUser: UserSession | null;
+  onDemoLogin: (role: UserRole) => void;
+  onLogout: () => void;
+}
 
-  const handleResetData = async () => {
-    if (window.confirm("Reset network graph to default metropolitan benchmark state?")) {
-      try {
-        await api.resetSeed();
-        await refreshGraphData();
-      } catch (err: any) {
-        alert("Failed to reset graph: " + err.message);
-      }
-    }
-  };
-
+export const Navbar: React.FC<NavbarProps> = ({
+  currentView,
+  onNavigate,
+  currentUser,
+  onDemoLogin,
+  onLogout,
+}) => {
   return (
-    <header className="h-16 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-6 flex items-center justify-between sticky top-0 z-30 transition-colors">
-      {/* Brand Identity */}
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-700 to-brand-500 flex items-center justify-center shadow-lg shadow-brand-500/20 text-white">
-          <Compass className="w-6 h-6 animate-pulse" />
-        </div>
-        <div>
+    <header className="bg-emerald-950 text-white sticky top-0 z-50 shadow-md border-b border-emerald-800">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16">
+          {/* Logo & Brand */}
+          <div
+            onClick={() => onNavigate('landing')}
+            className="flex items-center gap-3 cursor-pointer group"
+          >
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
+              <Utensils className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="font-extrabold text-xl tracking-tight text-white font-sans">
+                  Meal<span className="text-emerald-400">Mesh</span>
+                </span>
+                <span className="bg-emerald-500/20 text-emerald-300 text-[10px] font-bold px-1.5 py-0.5 rounded border border-emerald-400/30">
+                  DSA 2.0
+                </span>
+              </div>
+              <p className="text-[11px] text-emerald-200/70 font-medium tracking-wide">
+                Food Rescue & Redistribution
+              </p>
+            </div>
+          </div>
+
+          {/* Primary Navigation Links */}
+          <nav className="hidden md:flex items-center space-x-1 lg:space-x-2">
+            <button
+              onClick={() => onNavigate('landing')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                currentView === 'landing'
+                  ? 'bg-emerald-800 text-white shadow-sm'
+                  : 'text-emerald-100 hover:bg-emerald-900/60'
+              }`}
+            >
+              Overview
+            </button>
+            <button
+              onClick={() => onNavigate('donor')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                currentView === 'donor'
+                  ? 'bg-emerald-800 text-white shadow-sm'
+                  : 'text-emerald-100 hover:bg-emerald-900/60'
+              }`}
+            >
+              <Utensils className="w-3.5 h-3.5 text-emerald-400" />
+              Donor Hub
+            </button>
+            <button
+              onClick={() => onNavigate('ngo')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                currentView === 'ngo'
+                  ? 'bg-emerald-800 text-white shadow-sm'
+                  : 'text-emerald-100 hover:bg-emerald-900/60'
+              }`}
+            >
+              <HeartHandshake className="w-3.5 h-3.5 text-blue-400" />
+              NGO Hub
+            </button>
+            <button
+              onClick={() => onNavigate('volunteer')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                currentView === 'volunteer'
+                  ? 'bg-emerald-800 text-white shadow-sm'
+                  : 'text-emerald-100 hover:bg-emerald-900/60'
+              }`}
+            >
+              <Bike className="w-3.5 h-3.5 text-amber-400" />
+              Volunteer
+            </button>
+            <button
+              onClick={() => onNavigate('admin')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                currentView === 'admin'
+                  ? 'bg-emerald-800 text-white shadow-sm'
+                  : 'text-emerald-100 hover:bg-emerald-900/60'
+              }`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />
+              Admin
+            </button>
+            <button
+              onClick={() => onNavigate('dsa-lab')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition border ${
+                currentView === 'dsa-lab'
+                  ? 'bg-emerald-500 text-emerald-950 border-emerald-400 shadow-md'
+                  : 'bg-emerald-900/80 text-emerald-200 border-emerald-700/50 hover:bg-emerald-800'
+              }`}
+            >
+              <Cpu className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+              DSA Laboratory
+            </button>
+            <button
+              onClick={() => onNavigate('analytics')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                currentView === 'analytics'
+                  ? 'bg-emerald-800 text-white shadow-sm'
+                  : 'text-emerald-100 hover:bg-emerald-900/60'
+              }`}
+            >
+              <BarChart3 className="w-3.5 h-3.5 text-emerald-400" />
+              Analytics
+            </button>
+          </nav>
+
+          {/* Quick Demo Switcher & Session Controls */}
           <div className="flex items-center gap-2">
-            <h1 className="font-bold text-base md:text-lg tracking-tight text-slate-900 dark:text-white">
-              Intelligent Route Optimization
-            </h1>
-            <span className="hidden sm:inline-block text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-brand-100 text-brand-800 dark:bg-brand-950 dark:text-brand-300 border border-brand-200 dark:border-brand-800">
-              DSA v1.0
-            </span>
+            {currentUser ? (
+              <div className="flex items-center gap-3">
+                <div className="text-right hidden sm:block">
+                  <p className="text-xs font-bold text-white leading-none">{currentUser.fullName}</p>
+                  <span className="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase">
+                    {currentUser.role}
+                  </span>
+                </div>
+                <button
+                  onClick={onLogout}
+                  title="Log out"
+                  className="p-1.5 text-emerald-300 hover:text-white hover:bg-emerald-900 rounded-lg transition"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 bg-emerald-900/70 p-1 rounded-xl border border-emerald-800">
+                <span className="text-[10px] uppercase font-bold text-emerald-300 px-1 hidden lg:inline">
+                  Demo as:
+                </span>
+                <button
+                  onClick={() => onDemoLogin('DONOR')}
+                  className="px-2 py-1 text-[11px] font-semibold rounded bg-emerald-800/80 hover:bg-emerald-700 text-emerald-100 transition"
+                >
+                  Donor
+                </button>
+                <button
+                  onClick={() => onDemoLogin('NGO')}
+                  className="px-2 py-1 text-[11px] font-semibold rounded bg-blue-900/60 hover:bg-blue-800 text-blue-100 transition"
+                >
+                  NGO
+                </button>
+                <button
+                  onClick={() => onDemoLogin('VOLUNTEER')}
+                  className="px-2 py-1 text-[11px] font-semibold rounded bg-amber-900/60 hover:bg-amber-800 text-amber-100 transition"
+                >
+                  Volunteer
+                </button>
+                <button
+                  onClick={() => onDemoLogin('ADMIN')}
+                  className="px-2 py-1 text-[11px] font-semibold rounded bg-slate-800 hover:bg-slate-700 text-slate-100 transition"
+                >
+                  Admin
+                </button>
+              </div>
+            )}
           </div>
-          <p className="hidden md:block text-xs text-slate-500 dark:text-slate-400">
-            Real-World Algorithmic Geospatial Navigation & Performance Engine
-          </p>
         </div>
-      </div>
-
-      {/* Network & Engine Stats Pill */}
-      <div className="flex items-center gap-3">
-        {stats && (
-          <div className="hidden lg:flex items-center gap-3 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-            <div className="flex items-center gap-1.5">
-              <Cpu className="w-3.5 h-3.5 text-brand-500" />
-              <span className="font-semibold text-slate-900 dark:text-slate-100">{stats.engine_type}</span>
-            </div>
-            <span className="text-slate-300 dark:text-slate-600">|</span>
-            <div className="flex items-center gap-1">
-              <MapPin className="w-3.5 h-3.5 text-emerald-500" />
-              <span>{stats.total_locations} Nodes</span>
-            </div>
-            <span className="text-slate-300 dark:text-slate-600">|</span>
-            <div className="flex items-center gap-1">
-              <Layers className="w-3.5 h-3.5 text-amber-500" />
-              <span>{stats.total_roads} Roads</span>
-            </div>
-            <span className="text-slate-300 dark:text-slate-600">|</span>
-            <div className="flex items-center gap-1">
-              {stats.is_fully_connected ? (
-                <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Connected
-                </span>
-              ) : (
-                <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-medium">
-                  <AlertTriangle className="w-3.5 h-3.5" /> {stats.connected_components} Components
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Reseed Database Button */}
-        <button
-          onClick={handleResetData}
-          disabled={loading}
-          title="Reset graph to default benchmark network"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors border border-slate-200 dark:border-slate-700"
-        >
-          <RotateCcw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-brand-500' : ''}`} />
-          <span className="hidden sm:inline">Reset Graph</span>
-        </button>
-
-        {/* Dark/Light Mode Switch */}
-        <button
-          onClick={toggleDarkMode}
-          title="Toggle light and dark themes"
-          className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors border border-slate-200 dark:border-slate-700"
-        >
-          {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
-        </button>
       </div>
     </header>
   );
 };
-

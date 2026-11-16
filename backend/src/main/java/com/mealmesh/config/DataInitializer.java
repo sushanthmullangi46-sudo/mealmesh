@@ -1,0 +1,215 @@
+package com.mealmesh.config;
+
+import com.mealmesh.entity.*;
+import com.mealmesh.repository.*;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+
+@Component
+public class DataInitializer implements CommandLineRunner {
+
+    private final UserRepository userRepository;
+    private final LocationRepository locationRepository;
+    private final DonorProfileRepository donorProfileRepository;
+    private final NgoProfileRepository ngoProfileRepository;
+    private final VolunteerProfileRepository volunteerProfileRepository;
+    private final FoodCategoryRepository foodCategoryRepository;
+    private final DonationRepository donationRepository;
+    private final AllocationRepository allocationRepository;
+    private final DeliveryRepository deliveryRepository;
+    private final BeneficiaryDistributionRepository distributionRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    public DataInitializer(UserRepository userRepository,
+                           LocationRepository locationRepository,
+                           DonorProfileRepository donorProfileRepository,
+                           NgoProfileRepository ngoProfileRepository,
+                           VolunteerProfileRepository volunteerProfileRepository,
+                           FoodCategoryRepository foodCategoryRepository,
+                           DonationRepository donationRepository,
+                           AllocationRepository allocationRepository,
+                           DeliveryRepository deliveryRepository,
+                           BeneficiaryDistributionRepository distributionRepository,
+                           PasswordEncoder passwordEncoder) {
+        this.userRepository = userRepository;
+        this.locationRepository = locationRepository;
+        this.donorProfileRepository = donorProfileRepository;
+        this.ngoProfileRepository = ngoProfileRepository;
+        this.volunteerProfileRepository = volunteerProfileRepository;
+        this.foodCategoryRepository = foodCategoryRepository;
+        this.donationRepository = donationRepository;
+        this.allocationRepository = allocationRepository;
+        this.deliveryRepository = deliveryRepository;
+        this.distributionRepository = distributionRepository;
+        this.passwordEncoder = passwordEncoder;
+    }
+
+    @Override
+    @Transactional
+    public void run(String... args) {
+        if (userRepository.count() > 0) {
+            return; // Already initialized
+        }
+
+        String encodedPassword = passwordEncoder.encode("demo123");
+
+        // 1. Admin
+        User admin = new User(null, "admin@mealmesh.org", encodedPassword, "System Administrator", "+91 80 4000 0001", "ADMIN");
+        admin.setVerified(true);
+        admin = userRepository.save(admin);
+
+        // 2. Donor 1 (Koramangala)
+        User donorUser1 = new User(null, "donor.koramangala@mealmesh.org", encodedPassword, "Chef Suresh Kumar", "+91 98450 11001", "DONOR");
+        donorUser1.setVerified(true);
+        donorUser1 = userRepository.save(donorUser1);
+
+        Location locDonor1 = new Location(null, donorUser1, "ITC Gardenia Kitchen", "80 Feet Rd, Koramangala 4th Block", "Bengaluru", "560034", 12.9352, 77.6245);
+        locDonor1 = locationRepository.save(locDonor1);
+
+        DonorProfile donorProf1 = new DonorProfile(null, donorUser1, "ITC Gardenia Kitchen", "HOTEL", "FSSAI-112233440011", "Chef Suresh Kumar", 4.9);
+        donorProf1 = donorProfileRepository.save(donorProf1);
+
+        // 3. Donor 2 (Indiranagar)
+        User donorUser2 = new User(null, "donor.indiranagar@mealmesh.org", encodedPassword, "Ananya Rao", "+91 98450 11002", "DONOR");
+        donorUser2.setVerified(true);
+        donorUser2 = userRepository.save(donorUser2);
+
+        Location locDonor2 = new Location(null, donorUser2, "Corner House Foods", "100ft Road, Indiranagar", "Bengaluru", "560038", 12.9784, 77.6408);
+        locDonor2 = locationRepository.save(locDonor2);
+
+        DonorProfile donorProf2 = new DonorProfile(null, donorUser2, "Corner House Foods", "BAKERY", "FSSAI-112233440022", "Ananya Rao", 4.8);
+        donorProf2 = donorProfileRepository.save(donorProf2);
+
+        // 4. NGO 1 (Akshaya Patra HSR)
+        User ngoUser1 = new User(null, "ngo.akshayapatra@mealmesh.org", encodedPassword, "Ramesh Narayan", "+91 80 2345 6701", "NGO");
+        ngoUser1.setVerified(true);
+        ngoUser1 = userRepository.save(ngoUser1);
+
+        Location locNgo1 = new Location(null, ngoUser1, "Akshaya Patra HSR Center", "Sector 2, HSR Layout", "Bengaluru", "560102", 12.9121, 77.6446);
+        locNgo1 = locationRepository.save(locNgo1);
+
+        NgoProfile ngoProf1 = new NgoProfile(null, ngoUser1, "Akshaya Patra Foundation", "NGO-KA-2015-0912", 250, 80.0, 35.0, 250.0, "06:00 - 21:00", "VEG,ALL", true);
+        ngoProf1 = ngoProfileRepository.save(ngoProf1);
+
+        // 5. NGO 2 (Jayanagar)
+        User ngoUser2 = new User(null, "ngo.robinhood@mealmesh.org", encodedPassword, "Vikram Joshi", "+91 80 2345 6702", "NGO");
+        ngoUser2.setVerified(true);
+        ngoUser2 = userRepository.save(ngoUser2);
+
+        Location locNgo2 = new Location(null, ngoUser2, "Robin Hood Army Jayanagar", "4th Block, Jayanagar", "Bengaluru", "560011", 12.9250, 77.5938);
+        locNgo2 = locationRepository.save(locNgo2);
+
+        NgoProfile ngoProf2 = new NgoProfile(null, ngoUser2, "Robin Hood Army Bengaluru", "NGO-KA-2018-4411", 180, 60.0, 20.0, 200.0, "07:00 - 22:00", "ALL", true);
+        ngoProf2 = ngoProfileRepository.save(ngoProf2);
+
+        // 6. Volunteer 1 (Rahul)
+        User volUser1 = new User(null, "volunteer.rahul@mealmesh.org", encodedPassword, "Rahul Sharma", "+91 99000 22001", "VOLUNTEER");
+        volUser1.setVerified(true);
+        volUser1 = userRepository.save(volUser1);
+
+        Location locVol1 = new Location(null, volUser1, "Rahul Sharma Base", "Koramangala 1st Block", "Bengaluru", "560034", 12.9300, 77.6200);
+        locationRepository.save(locVol1);
+
+        VolunteerProfile volProf1 = new VolunteerProfile(null, volUser1, "TWO_WHEELER", "KA-01-EQ-1001", 30.0, true, 12.9300, 77.6200, 18);
+        volProf1 = volunteerProfileRepository.save(volProf1);
+
+        // 7. Categories
+        FoodCategory catCooked = foodCategoryRepository.save(new FoodCategory(null, "Cooked Meals", "Cooked meals, rice, curries", 4, "HIGH"));
+        FoodCategory catBakery = foodCategoryRepository.save(new FoodCategory(null, "Bakery Items", "Breads, buns, dry baked goods", 12, "MEDIUM"));
+        FoodCategory catGroceries = foodCategoryRepository.save(new FoodCategory(null, "Raw Groceries", "Uncooked vegetables and staples", 24, "LOW"));
+
+        // 8. Donations
+        Donation don1 = new Donation();
+        don1.setDonor(donorProf1);
+        don1.setCategory(catCooked);
+        don1.setLocation(locDonor1);
+        don1.setTitle("Basmati Veg Biryani with Paneer Butter Masala");
+        don1.setDescription("Wholesome hot lunch buffet surplus, stored in insulated warm containers.");
+        don1.setFoodType("COOKED");
+        don1.setDietaryType("VEG");
+        don1.setQuantityKg(35.0);
+        don1.setServings(90);
+        don1.setCookedTime(LocalDateTime.now().minusHours(1));
+        don1.setExpiryTime(LocalDateTime.now().plusHours(3));
+        don1.setUrgency("CRITICAL");
+        don1.setStatus("AVAILABLE");
+        don1.setStorageTemperatureCelsius(65.0);
+        don1.setAllergenInfo("Contains Dairy, Nuts");
+        don1.setPickupInstructions("Collect from kitchen rear dispatch counter");
+        don1 = donationRepository.save(don1);
+
+        Donation don2 = new Donation();
+        don2.setDonor(donorProf2);
+        don2.setCategory(catBakery);
+        don2.setLocation(locDonor2);
+        don2.setTitle("Fresh Multigrain Sourdough Loaves & Buns");
+        don2.setDescription("Baked daily morning, sealed in hygienic food-grade paper packaging.");
+        don2.setFoodType("PACKAGED");
+        don2.setDietaryType("VEG");
+        don2.setQuantityKg(20.0);
+        don2.setServings(50);
+        don2.setCookedTime(LocalDateTime.now().minusHours(2));
+        don2.setExpiryTime(LocalDateTime.now().plusHours(6));
+        don2.setUrgency("HIGH");
+        don2.setStatus("AVAILABLE");
+        don2.setStorageTemperatureCelsius(24.0);
+        don2.setAllergenInfo("Contains Gluten");
+        don2.setPickupInstructions("Collect from storefront bakery display counter");
+        don2 = donationRepository.save(don2);
+
+        Donation don3 = new Donation();
+        don3.setDonor(donorProf1);
+        don3.setCategory(catCooked);
+        don3.setLocation(locDonor1);
+        don3.setTitle("South Indian Sambar, Rice & Vegetable Poriyal");
+        don3.setDescription("Freshly prepared morning corporate catering surplus.");
+        don3.setFoodType("COOKED");
+        don3.setDietaryType("VEG");
+        don3.setQuantityKg(25.0);
+        don3.setServings(65);
+        don3.setCookedTime(LocalDateTime.now().minusHours(1));
+        don3.setExpiryTime(LocalDateTime.now().plusHours(4));
+        don3.setUrgency("CRITICAL");
+        don3.setStatus("RESERVED");
+        don3.setStorageTemperatureCelsius(68.0);
+        don3.setAllergenInfo("None");
+        don3 = donationRepository.save(don3);
+
+        // 9. Allocation & Delivery for demonstration
+        Allocation alloc1 = new Allocation();
+        alloc1.setDonation(don3);
+        alloc1.setNgo(ngoProf1);
+        alloc1.setAllocatedQuantityKg(25.0);
+        alloc1.setStatus("ACCEPTED");
+        alloc1.setMatchScore(94.5);
+        alloc1.setMatchedAt(LocalDateTime.now().minusMinutes(20));
+        alloc1 = allocationRepository.save(alloc1);
+
+        Delivery delivery1 = new Delivery();
+        delivery1.setAllocation(alloc1);
+        delivery1.setVolunteer(volProf1);
+        delivery1.setStatus("ASSIGNED");
+        delivery1.setPickupLatitude(locDonor1.getLatitude());
+        delivery1.setPickupLongitude(locDonor1.getLongitude());
+        delivery1.setDropoffLatitude(locNgo1.getLatitude());
+        delivery1.setDropoffLongitude(locNgo1.getLongitude());
+        delivery1.setEstimatedDistanceKm(4.8);
+        delivery1.setEstimatedTimeMinutes(14.0);
+        delivery1.setStartTime(LocalDateTime.now());
+        deliveryRepository.save(delivery1);
+
+        // 10. Completed Beneficiary Distributions for analytics
+        BeneficiaryDistribution dist = new BeneficiaryDistribution();
+        dist.setNgo(ngoProf1);
+        dist.setDonation(don3);
+        dist.setBeneficiaryGroup("Children Shelter & Slum Community");
+        dist.setPeopleFedCount(1250);
+        dist.setQuantityDistributedKg(520.0);
+        dist.setDistributedAt(LocalDateTime.now().minusDays(1));
+        distributionRepository.save(dist);
+    }
+}

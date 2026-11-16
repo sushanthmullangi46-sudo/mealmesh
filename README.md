@@ -1,267 +1,163 @@
-# Intelligent Route Optimization & Navigation System
+# MealMesh – Intelligent Food Rescue & Redistribution System
 
-[![C++20](https://img.shields.io/badge/C%2B%2B-20-blue.svg)](https://isocpp.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg)](https://fastapi.tiangolo.com)
-[![React](https://img.shields.io/badge/React-18-61dafb.svg)](https://react.dev)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue.svg)](https://www.typescriptlang.org/)
-[![Tailwind CSS](https://img.shields.io/badge/TailwindCSS-3.4-38bdf8.svg)](https://tailwindcss.com)
-[![Leaflet](https://img.shields.io/badge/Leaflet-1.9-green.svg)](https://leafletjs.com)
-[![Tests](https://img.shields.io/badge/Tests-Pytest%20%7C%20Vitest%20%7C%20C%2B%2B-brightgreen.svg)]()
+<div align="center">
+  <img src="https://images.unsplash.com/photo-1593113598332-cd288d649433?auto=format&fit=crop&w=1200&q=80" alt="MealMesh Banner" width="100%" style="border-radius: 16px; max-height: 380px; object-fit: cover;" />
 
-> A full-stack, enterprise-grade geospatial navigation and route optimization platform engineered to demonstrate advanced Data Structures and Algorithms (DSA) through real-world GIS mapping, dynamic traffic rerouting, multi-stop Traveling Salesperson (TSP) planning, and step-by-step algorithm visualization.
+  <br />
 
----
+  <h1>Rescue Food. Redistribute Hope.</h1>
+  <p><strong>A production-grade, full-stack platform powered by genuine Data Structures & Algorithms to eliminate urban food waste and combat hunger.</strong></p>
 
-## 1. Project Overview
-Inspired by modern navigation systems such as Google Maps and OSRM, the **Intelligent Route Optimization & Navigation System** replaces black-box third-party routing APIs with custom-built, from-scratch algorithmic engines. It integrates a high-performance **C++20 algorithmic core** (with pybind11 and dual-mode Python mirror), a **FastAPI REST backend**, and an interactive **React / TypeScript / Leaflet.js** dashboard.
-
-The platform provides practical solutions to complex graph problems, including Single-Source Shortest Paths (Dijkstra and A*), multi-criteria optimization (Distance vs. Time vs. Cost), dynamic congestion rerouting, NP-hard Multi-Stop TSP optimization (Nearest Neighbor + 2-Opt), Disjoint Set Union (DSU) network partitioning, and step-by-step algorithm state visualization.
-
----
-
-## 2. Problem Statement
-Commercial navigation applications abstract away algorithmic internals, making it difficult for software engineers, students, and researchers to visualize how graph algorithms make real-time decisions, how priority queues expand frontiers, how heuristics guarantee admissibility, or how congestion changes optimal topologies.
-
-This system solves this challenge by delivering:
-1. **Algorithmic Transparency**: Live step-by-step traces of Dijkstra and A* showing Priority Queue insertions, edge relaxations, and parent pointer updates.
-2. **Multi-Objective Routing**: Pareto-optimal trade-offs between shortest distance (km), fastest duration (minutes), and lowest financial cost (fuel + tolls + driver time).
-3. **Dynamic Topology Adaptation**: Instant graph rerouting when roads transition between `LOW`, `MEDIUM`, `HIGH`, and `BLOCKED` states.
-4. **NP-Hard Route Planning**: Approximating optimal multi-stop delivery tours using heuristic local search (2-Opt).
+  <p>
+    <img src="https://img.shields.io/badge/Java-21%2B%20%7C%2025-blue?logo=openjdk" alt="Java" />
+    <img src="https://img.shields.io/badge/Spring%20Boot-3.3.5-brightgreen?logo=springboot" alt="Spring Boot" />
+    <img src="https://img.shields.io/badge/React-18.3-blue?logo=react" alt="React" />
+    <img src="https://img.shields.io/badge/TypeScript-5.6-blue?logo=typescript" alt="TypeScript" />
+    <img src="https://img.shields.io/badge/TailwindCSS-3.4-teal?logo=tailwindcss" alt="Tailwind CSS" />
+    <img src="https://img.shields.io/badge/PostgreSQL-16-blue?logo=postgresql" alt="PostgreSQL" />
+    <img src="https://img.shields.io/badge/Tests-100%25%20Passing-success" alt="Tests" />
+  </p>
+</div>
 
 ---
 
-## 3. Technology Stack
+## 🌟 Overview & Mission
+
+Large quantities of wholesome, edible surplus food from commercial kitchens, hotels, and caterers are discarded daily, while millions of individuals struggle with food insecurity. 
+
+**MealMesh** resolves this critical logistical challenge through an intelligent, algorithm-driven redistribution network:
+1. **Min-Heap Expiry Priority:** Newly posted food batches are prioritized automatically in $O(\log N)$ time, ensuring the most urgently expiring items are rescued first.
+2. **Greedy Multi-Criteria Matching:** Allocates food portions to nearby verified NGOs by evaluating real-time distance, remaining storage capacity, dietary preferences, and expiry urgency.
+3. **Dijkstra Road Optimization:** Computes fastest and shortest delivery paths across the urban road network for volunteer transport fleets.
+4. **Reversible Operation Stack:** Enables dispatchers and administrators to safely roll back allocations and verification decisions.
+5. **Interactive DSA Laboratory:** A 10-visualizer sandbox enabling live inspection, step-by-step playback, and debugging of all custom data structures.
+
+---
+
+## 🛠️ Technology Stack
 
 | Layer | Technologies |
-| :--- | :--- |
-| **Frontend** | React 18, TypeScript, Tailwind CSS, Leaflet.js, React-Leaflet, Recharts, Lucide Icons |
-| **Backend API** | Python 3.13, FastAPI, RESTful APIs, Pydantic v2, Python-Jose (JWT), Passlib / PBKDF2 |
-| **DSA Engine** | C++20, STL, Custom Adjacency Lists, Custom Binary Min-Heap Priority Queue, pybind11 |
-| **Database** | PostgreSQL / SQLite Dual-Mode, SQLAlchemy 2.0 ORM |
-| **Testing** | Pytest (Python backend), Vitest (Frontend), Standalone C++ Test Suite |
-| **DevOps / Deployment**| Docker, Docker Compose, Nginx, Multi-Stage Builds |
+|---|---|
+| **Frontend** | React 18, TypeScript, Vite, Tailwind CSS, Framer Motion, Lucide Icons, Recharts, Leaflet / OpenStreetMap |
+| **Backend** | Java 21+ (Running JDK 25), Spring Boot 3.3.5, Spring Security, Spring Data JPA, Hibernate ORM, Flyway Migrations |
+| **Database** | PostgreSQL 16 (Production) & Persistent H2 file mode (`./data/mealmesh.mv.db`, Development) |
+| **DSA Engine** | 9 Custom Data Structures & Algorithms implemented completely from scratch (`com.mealmesh.dsa.*`) |
+| **Testing** | JUnit 5, Mockito, Vitest, React Testing Library (100% Passing) |
+| **Containerization** | Docker, Docker Compose (Multi-stage builds) |
 
 ---
 
-## 4. System Architecture
+## 🧩 Core DSA Engine (Implemented From Scratch)
 
-```mermaid
-flowchart TB
-    subgraph UI ["Frontend (React 18 + TS + Tailwind + Leaflet)"]
-        Dashboard["1. Overview Dashboard"]
-        LiveNav["2. Live Navigation Engine"]
-        ShortestPath["3. Dijkstra & A* Pathfinder"]
-        MultiCriteria["4. Route Comparison"]
-        TrafficSim["5. Dynamic Traffic Rerouting"]
-        MultiStop["6. Multi-Stop TSP Planner"]
-        AlgoVis["7. Step-by-Step Visualizer"]
-        GraphAnalysis["8. Connectivity & DSU Analyzer"]
-        Benchmarks["9. Algorithmic Benchmarks"]
-        Settings["10. System Settings & Presets"]
-    end
+Standard Java collections (`PriorityQueue`, `HashMap`, `Stack`, `LinkedList`) were **strictly avoided** for the core algorithmic representations:
 
-    subgraph API ["Backend (FastAPI REST Services)"]
-        AuthRouter["/api/v1/auth"]
-        LocationsRouter["/api/v1/locations & roads"]
-        RoutesRouter["/api/v1/routes (Shortest, Fastest, A*, Compare)"]
-        TrafficRouter["/api/v1/traffic (Road update, Randomize, Reset)"]
-        TSPRouter["/api/v1/multistop (Nearest Neighbor + 2-Opt)"]
-        AnalysisRouter["/api/v1/analytics (DSU, BFS, DFS)"]
-        VisualizerRouter["/api/v1/visualize (Trace generator)"]
-        BenchmarkRouter["/api/v1/benchmarks (Scalability Suite)"]
-    end
+1. **Binary Min-Heap (`com.mealmesh.dsa.heap.MinHeap`)**: 0-indexed resizable array representation for time-to-expiry prioritization with dynamic `heapifyUp` and `heapifyDown`.
+2. **Adjacency-List Graph (`com.mealmesh.dsa.graph.Graph`)**: Weighted directed/undirected graph with $O((V + E) \log V)$ **Dijkstra Shortest Path**, BFS, DFS, and Nearest-Neighbor TSP heuristic.
+3. **Separate-Chaining Hash Table (`com.mealmesh.dsa.hashtable.CustomHashTable`)**: Polynomial rolling hash function with automatic capacity doubling when load factor exceeds 0.75.
+4. **Multi-Criteria Greedy Allocator (`com.mealmesh.dsa.greedy.GreedyAllocator`)**: Composite scoring function balancing proximity, capacity, dietary alignment, and urgency with in-place QuickSort partitioning.
+5. **Disjoint Set Union (`com.mealmesh.dsa.unionfind.DisjointSetUnion`)**: Delivery zone clustering with path compression and union by rank in $O(\alpha(N))$ time.
+6. **Prefix Tree (`com.mealmesh.dsa.trie.Trie`)**: 128-child pointer array per node for sub-millisecond search and autocompletion.
+7. **Singly-Linked FIFO Queue (`com.mealmesh.dsa.queue.CustomQueue`)**: Fair first-come-first-served request management.
+8. **Singly-Linked LIFO Stack (`com.mealmesh.dsa.stack.CustomStack`)**: Administrative reversible action stack.
+9. **Doubly Linked List (`com.mealmesh.dsa.linkedlist.DoublyLinkedList`)**: Bidirectional donation timeline navigation.
 
-    subgraph Core ["DSA Core Engine (C++20 / Python Dual Mode)"]
-        GraphCore["Graph (Adjacency List with Snapshot Versioning)"]
-        HeapPQ["Min Priority Queue (Binary Heap)"]
-        DijkstraEngine["Dijkstra: O((V+E) log V)"]
-        AStarEngine["A* Pathfinding (Admissible Haversine Heuristic)"]
-        DSUEngine["Disjoint Set Union (Path Compression + Union by Rank)"]
-        TSPEngine["TSP 2-Opt Local Search Heuristic"]
-        TraceEngine["Execution Event Recorder"]
-    end
+---
 
-    subgraph Storage ["Database (SQLAlchemy ORM + PostgreSQL / SQLite)"]
-        T_Users["users"]
-        T_Locations["locations (lat, lon, elevation)"]
-        T_Roads["roads (traffic levels, toll, speed)"]
-        T_History["route_history & saved_routes"]
-        T_Bench["algorithm_benchmarks"]
-    end
+## 🚀 Quick Start Guide
 
-    UI -->|REST JSON / Leaflet Layers| API
-    API -->|High-Performance Native Calls| Core
-    API -->|Transactions & Sessions| Storage
+### Prerequisites
+- Java 21 or later (`java -version`)
+- Node.js 18+ and npm (`node -v`, `npm -v`)
+- Maven (included or system)
+
+### 1. Start the Spring Boot Backend
+```powershell
+# In a terminal window:
+cd backend
+& "C:\Users\mdpul\.vscode\extensions\oracle.oracle-java-27.0.0\nbcode\java\maven\bin\mvn.cmd" spring-boot:run
+```
+*Backend runs on `http://localhost:8080` with persistent local H2 database and auto-seeded Bengaluru data.*
+
+### 2. Start the React Frontend
+```powershell
+# In a second terminal window:
+cd frontend
+npm.cmd run dev
+```
+*Frontend runs on `http://localhost:3000` (or `http://localhost:5173`).*
+
+---
+
+## 👥 Demo Accounts (1-Click Instant Login)
+
+The frontend includes 1-click demo switcher buttons in the navigation bar:
+
+| Role | Demo Email | Password | Pre-seeded Context |
+|---|---|---|---|
+| **Donor** | `donor.koramangala@mealmesh.org` | `demo123` | ITC Gardenia Kitchen (Koramangala 4th Block) |
+| **NGO** | `ngo.akshayapatra@mealmesh.org` | `demo123` | Akshaya Patra Foundation (HSR Layout Hub) |
+| **Volunteer** | `volunteer.rahul@mealmesh.org` | `demo123` | Two-Wheeler Transporter (Rahul Sharma) |
+| **Admin** | `admin@mealmesh.org` | `demo123` | Central MealMesh Administrator |
+
+---
+
+## 🧪 Verification & Test Suites
+
+```powershell
+# Run backend DSA unit tests (16 tests):
+& "C:\Users\mdpul\.vscode\extensions\oracle.oracle-java-27.0.0\nbcode\java\maven\bin\mvn.cmd" -f backend/pom.xml test
+
+# Run frontend test suite (4 tests):
+npm.cmd --prefix frontend test
 ```
 
 ---
 
-## 5. Folder Structure
+## 📁 Repository Structure
 
 ```
-route-optimization-system/
-├── backend/
-│   ├── app/
-│   │   ├── api/             # REST Routers (auth, routes, traffic, visualizer, etc.)
-│   │   ├── core/            # Configuration and security
-│   │   ├── database/        # SQLAlchemy session & Base
-│   │   ├── models/          # ORM models (locations, roads, users, history)
-│   │   ├── schemas/         # Pydantic request/response schemas
-│   │   ├── services/
-│   │   │   ├── dsa_engine/  # High-performance DSA Python mirror (Graph, Heap, etc.)
-│   │   │   └── graph_service.py # Graph business logic & cache coordinator
-│   │   ├── tests/           # Pytest API integration tests
-│   │   └── main.py          # FastAPI application entrypoint
-│   └── requirements.txt
-├── dsa-engine/
-│   ├── include/             # C++20 Header files (Graph, Dijkstra, AStar, DSU, etc.)
-│   ├── src/                 # C++20 Implementations & pybind11 bindings
-│   ├── tests/               # C++ Standalone Test Runner
-│   ├── benchmarks/          # C++ Scalability Benchmark Executable
-│   └── CMakeLists.txt
-├── frontend/
+├── backend/                  # Java 21+ Spring Boot 3.3.5 Backend
+│   ├── src/main/java/com/mealmesh/
+│   │   ├── dsa/              # Custom Data Structures & Algorithms
+│   │   │   ├── graph/        # Vertex, Edge, Graph, DijkstraResult, GraphStep
+│   │   │   ├── heap/         # MinHeap, HeapItem, HeapStep
+│   │   │   ├── hashtable/    # CustomHashTable, HashNode, HashStep
+│   │   │   ├── greedy/       # GreedyAllocator, NgoCandidate, DonationBatch
+│   │   │   ├── unionfind/    # DisjointSetUnion, DsuStep
+│   │   │   ├── trie/         # Trie, TrieNode, TrieStep
+│   │   │   ├── queue/        # CustomQueue, QueueNode, QueueStep
+│   │   │   ├── stack/        # CustomStack, StackNode, StackStep
+│   │   │   └── linkedlist/   # DoublyLinkedList, DoublyNode, LinkedListStep
+│   │   ├── entity/           # JPA Entities (User, Donation, Allocation, Delivery)
+│   │   ├── repository/       # Spring Data JPA Repositories
+│   │   ├── service/          # Business services (Donation, Matching, Routing)
+│   │   ├── controller/       # REST API endpoints
+│   │   └── security/         # JWT Token Provider, Filter & SecurityConfig
+│   └── src/main/resources/
+│       ├── application.yml   # Multi-profile H2/PostgreSQL configuration
+│       └── db/migration/     # V1 Schema & V2 Bengaluru Demo Seed Data
+├── frontend/                 # React 18 + TypeScript + Vite Frontend
 │   ├── src/
-│   │   ├── components/      # Navbar, Sidebar, UI widgets
-│   │   ├── hooks/           # useNavigationContext state provider
-│   │   ├── maps/            # Interactive Leaflet map with custom SVG DivIcons
-│   │   ├── pages/           # 10 Application Views
-│   │   ├── services/        # Typed API client
-│   │   ├── styles/          # Tailwind CSS and Leaflet custom themes
-│   │   ├── types/           # TypeScript interfaces
-│   │   ├── App.tsx          # Main layout orchestrator
-│   │   └── main.tsx
-│   ├── package.json
-│   ├── vite.config.ts
-│   └── tailwind.config.js
-├── database/
-│   ├── seed/                # Comprehensive 26-node, 34-road metropolitan dataset
-│   └── migrations/
-├── docs/
-│   ├── algorithms/          # DSA explanations, pseudocode & proofs
-│   └── architecture/        # Architectural specifications
-├── docker/
-│   ├── Dockerfile.backend
-│   ├── Dockerfile.frontend
-│   └── nginx.conf
-├── docker-compose.yml
-├── README.md
-└── .gitignore
+│   │   ├── pages/            # LandingPage, Donor, NGO, Volunteer, Admin, DSA Lab, Analytics
+│   │   ├── maps/             # Leaflet MealMeshMap with route polylines
+│   │   ├── components/       # Navbar, Footer
+│   │   ├── services/         # Typed API Client
+│   │   └── types/            # TypeScript interfaces
+├── docs/                     # Comprehensive Architectural Documentation
+│   ├── ARCHITECTURE.md
+│   ├── DSA_DOCUMENTATION.md
+│   ├── DATABASE_DESIGN.md
+│   ├── API_DOCUMENTATION.md
+│   └── TESTING.md
+├── archive/route-optimization/# Preserved previous project files
+└── docker-compose.yml        # PostgreSQL 16 & Multi-service containerization
 ```
 
 ---
 
-## 6. Installation & How to Run
+## 📜 Compliance & Impact Standards
 
-### Option A: Direct Local Run (Zero Docker Required)
-
-#### 1. Start the Backend API
-```bash
-# In project root
-python -m pip install -r backend/requirements.txt
-python -m uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8000 --reload
-```
-* The backend automatically initializes SQLite (`route_opt.db`), creates tables, and seeds 26 locations and 34 roads.
-* API Documentation: [http://localhost:8000/docs](http://localhost:8000/docs)
-
-#### 2. Start the Frontend
-```bash
-cd frontend
-npm install
-npm run dev
-```
-* Open [http://localhost:3000](http://localhost:3000) in your web browser.
-
----
-
-### Option B: Docker Deployment
-
-```bash
-docker compose up --build
-```
-* Frontend: [http://localhost:3000](http://localhost:3000)
-* Backend API: [http://localhost:8000/docs](http://localhost:8000/docs)
-* PostgreSQL: `localhost:5432`
-
----
-
-## 7. Core Modules & Capabilities
-
-### Module 1: Interactive Map
-* Leaflet.js with OpenStreetMap tiles.
-* Nodes rendered as custom SVG markers with distinctive color coding for terminals, points of interest, hospitals, and transit hubs.
-* Colored road edges matching traffic levels (Low: Green, Medium: Amber, High: Red, Blocked: Purple).
-* Interactive selection of origin and destination by clicking map markers.
-
-### Module 2 & 3: Dijkstra vs. A* Pathfinding
-* Dijkstra algorithm implemented from scratch with a custom binary Min-Heap.
-* A* pathfinding using the great-circle Haversine formula as an admissible heuristic.
-* Explores up to 60% fewer nodes than Dijkstra while guaranteeing mathematical optimality.
-
-### Module 4: Multi-Criteria Route Comparison
-* Evaluates Shortest Distance vs. Fastest Travel Time vs. Lowest Monetary Cost.
-* Accounts for fuel consumption (\$0.15/km), highway tolls, and opportunity cost of driver time (\$0.30/min).
-
-### Module 5: Dynamic Traffic Simulation
-* Live traffic states: `LOW` (1.0x), `MEDIUM` (1.5x), `HIGH` (2.5x), and `BLOCKED` ($\infty$).
-* "Randomize Rush Hour" and "Block Midtown Broadway" simulation buttons demonstrate immediate algorithmic rerouting around bottlenecks.
-
-### Module 6: Multi-Stop TSP Planning
-* Solves the Traveling Salesperson Problem for multiple destinations.
-* Nearest Neighbor greedy heuristic construction followed by 2-Opt edge exchange local search.
-* Quantifies kilometers saved and tour improvement percentage.
-
-### Module 7: Graph Connectivity & DSU
-* Disjoint Set Union with Path Compression and Union by Rank.
-* Partitions the graph into connected components and detects isolated islands (e.g., Governors Island).
-* Level-order Breadth-First Search (BFS) and Depth-First Search (DFS) traversals.
-
-### Module 8: Step-by-Step Algorithm Visualizer
-* Generates real execution step traces from the algorithmic core.
-* Features Play, Pause, Step Forward, Step Backward, and variable speeds (0.5x to 4x).
-* Real-time inspection of the Priority Queue Min-Heap, distance arrays, and parent pointers.
-
-### Module 9: Performance Benchmarks
-* Empirically evaluates pathfinding on 50, 500, 2,000, and 5,000+ node graphs.
-* Generates Recharts bar charts (latency in ms) and line charts (explored frontier size).
-
----
-
-## 8. Complexity Summary
-
-| Algorithm | Time Complexity | Space Complexity | Optimality Guarantee |
-| :--- | :--- | :--- | :--- |
-| **Dijkstra** | $\mathcal{O}((\|V\| + \|E\|) \log \|V\|)$ | $\mathcal{O}(\|V\|)$ | Globally Optimal |
-| **A\* Pathfinding** | $\mathcal{O}(\|E\| \log \|V\|)$ average | $\mathcal{O}(\|V\|)$ | Globally Optimal (Admissible Heuristic) |
-| **Disjoint Set Union**| $\mathcal{O}(\alpha(\|V\|))$ amortized | $\mathcal{O}(\|V\|)$ | Exact Component Partition |
-| **BFS / DFS** | $\mathcal{O}(\|V\| + \|E\|)$ | $\mathcal{O}(\|V\|)$ | Complete Traversal |
-| **TSP (Nearest Neighbor + 2-Opt)** | $\mathcal{O}(K \cdot \|E\| \log \|V\| + I \cdot K^2)$ | $\mathcal{O}(K^2 + \|V\|)$ | Approximate (2-Optimal Local Optimum) |
-
----
-
-## 9. Verification & Testing
-
-### Backend Test Suite (Pytest)
-```bash
-python -m pytest backend/app/tests/test_api.py -v
-```
-* **11 / 11 tests passing**: Health check, Locations CRUD, Roads CRUD, Dijkstra, A*, Multi-Criteria Comparison, Dynamic Traffic, TSP 2-Opt, Algorithm Trace Generator, DSU Connectivity, and Authentication.
-
-### Frontend Test Suite (Vitest)
-```bash
-cd frontend
-npm run test
-```
-* Validates tab routing, heuristic admissibility, traffic multipliers, and 2-Opt calculation logic.
-
-### Frontend Production Build
-```bash
-cd frontend
-npm run build
-```
-* Verified clean production build generating optimized assets in `frontend/dist/`.
-
----
-
-## 10. License
-This project is released under the **MIT License**. Suitable for academic presentations, engineering portfolio showcases, and technical DSA interviews.
-
+- **FSSAI Food Safety Standards:** Hygiene ratings and storage temperature requirements tracked per donation batch.
+- **UN SDG Goal #2:** Direct contribution to Zero Hunger and Sustainable Consumption.
+- **Environmental Index:** Rescuing 1 kg of food avoids approximately 2.5 kg of CO2 equivalent emissions.
+- **Indian Financial Metric:** Rescued economic value evaluated in Indian Rupees (`INR ₹`).

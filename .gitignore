@@ -1,3 +1,14 @@
+# Maven / Java
+target/
+*.class
+*.jar
+*.war
+*.ear
+backend/target/
+data/
+*.mv.db
+*.trace.db
+
 # Environment variables
 .env
 .env.local

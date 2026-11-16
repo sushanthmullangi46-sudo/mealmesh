@@ -1,86 +1,74 @@
-import React from 'react';
-import { NavigationProvider, useNavigation } from './hooks/useNavigationContext';
+import React, { useState } from 'react';
 import { Navbar } from './components/Navbar';
-import { Sidebar } from './components/Sidebar';
-import { InteractiveMap } from './maps/InteractiveMap';
+import { Footer } from './components/Footer';
+import { LandingPage } from './pages/LandingPage';
+import { DonorDashboard } from './pages/DonorDashboard';
+import { NgoDashboard } from './pages/NgoDashboard';
+import { VolunteerDashboard } from './pages/VolunteerDashboard';
+import { AdminDashboard } from './pages/AdminDashboard';
+import { DsaLaboratory } from './pages/DsaLaboratory';
+import { AnalyticsPage } from './pages/AnalyticsPage';
+import { api } from './services/api';
+import { UserSession, UserRole } from './types/mealmesh';
 
-// Page Views
-import { DashboardView } from './pages/DashboardView';
-import { LiveNavigationView } from './pages/LiveNavigationView';
-import { ShortestPathView } from './pages/ShortestPathView';
-import { RouteOptimizationView } from './pages/RouteOptimizationView';
-import { TrafficSimulationView } from './pages/TrafficSimulationView';
-import { MultiStopView } from './pages/MultiStopView';
-import { VisualizerView } from './pages/VisualizerView';
-import { GraphAnalysisView } from './pages/GraphAnalysisView';
-import { BenchmarksView } from './pages/BenchmarksView';
-import { SettingsView } from './pages/SettingsView';
+export function App() {
+  const [currentView, setCurrentView] = useState<string>('landing');
+  const [currentUser, setCurrentUser] = useState<UserSession | null>(() => api.getCurrentUser());
 
-const MainContent: React.FC = () => {
-  const { activeTab } = useNavigation();
+  const handleNavigate = (view: string) => {
+    setCurrentView(view);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
-  const renderActiveView = () => {
-    switch (activeTab) {
-      case 'dashboard':
-        return <DashboardView />;
-      case 'navigation':
-        return <LiveNavigationView />;
-      case 'shortest-path':
-        return <ShortestPathView />;
-      case 'route-optimization':
-        return <RouteOptimizationView />;
-      case 'traffic':
-        return <TrafficSimulationView />;
-      case 'multistop':
-        return <MultiStopView />;
-      case 'visualizer':
-        return <VisualizerView />;
-      case 'graph-analysis':
-        return <GraphAnalysisView />;
-      case 'benchmarks':
-        return <BenchmarksView />;
-      case 'settings':
-        return <SettingsView />;
-      default:
-        return <DashboardView />;
+  const handleDemoLogin = async (role: UserRole) => {
+    try {
+      const session = await api.demoLogin(role);
+      setCurrentUser(session);
+      const targetView =
+        role === 'DONOR'
+          ? 'donor'
+          : role === 'NGO'
+          ? 'ngo'
+          : role === 'VOLUNTEER'
+          ? 'volunteer'
+          : 'admin';
+      setCurrentView(targetView);
+    } catch (err: any) {
+      console.error('Demo login error:', err);
     }
   };
 
-  // Views where map is secondary or not needed in split: benchmarks, settings
-  const showSplitMap = activeTab !== 'benchmarks' && activeTab !== 'settings';
+  const handleLogout = () => {
+    api.logout();
+    setCurrentUser(null);
+    setCurrentView('landing');
+  };
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
-      <Navbar />
+    <div className="min-h-screen flex flex-col bg-[#fcfbf9] text-slate-800 font-sans">
+      <Navbar
+        currentView={currentView}
+        onNavigate={handleNavigate}
+        currentUser={currentUser}
+        onDemoLogin={handleDemoLogin}
+        onLogout={handleLogout}
+      />
 
-      <div className="flex flex-1 min-h-0 overflow-hidden">
-        <Sidebar />
+      <main className="flex-1">
+        {currentView === 'landing' && (
+          <LandingPage onNavigate={handleNavigate} onDemoLogin={handleDemoLogin} />
+        )}
+        {currentView === 'donor' && <DonorDashboard />}
+        {currentView === 'ngo' && <NgoDashboard />}
+        {currentView === 'volunteer' && <VolunteerDashboard />}
+        {currentView === 'admin' && <AdminDashboard />}
+        {currentView === 'dsa-lab' && <DsaLaboratory />}
+        {currentView === 'analytics' && <AnalyticsPage />}
+      </main>
 
-        <main className="flex-1 flex flex-col lg:flex-row min-w-0 overflow-hidden">
-          {/* Active Control & Analytics View Panel */}
-          <div className={`${showSplitMap ? 'lg:w-[48%] xl:w-[44%]' : 'w-full'} flex-1 overflow-y-auto p-4 md:p-6 space-y-4`}>
-            {renderActiveView()}
-          </div>
-
-          {/* Interactive Geospatial Leaflet Map Panel */}
-          {showSplitMap && (
-            <div className="flex-1 lg:w-[52%] xl:w-[56%] p-4 md:p-6 pl-0 flex flex-col min-h-[420px] lg:min-h-0">
-              <InteractiveMap />
-            </div>
-          )}
-        </main>
-      </div>
+      <Footer onNavigate={handleNavigate} />
     </div>
-  );
-};
-
-export function App() {
-  return (
-    <NavigationProvider>
-      <MainContent />
-    </NavigationProvider>
   );
 }
 
 export default App;
-
