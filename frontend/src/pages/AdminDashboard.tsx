@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { AnalyticsSummary, NgoProfile, Delivery } from '../types/mealmesh';
+import { AnalyticsSummary, NgoProfile, Delivery, SensorReading, FoodSafetyThresholds } from '../types/mealmesh';
 import { LiveDeliveryTracker } from '../maps/LiveDeliveryTracker';
 import {
   ShieldCheck,
@@ -28,7 +28,15 @@ import {
   Activity,
   Heart,
   Award,
+  Thermometer,
+  Droplets,
+  Wind,
+  HeartHandshake,
+  TrendingUp,
+  Sparkles,
+  Sliders,
 } from 'lucide-react';
+import { ThermalExposurePanel } from '../components/ThermalExposurePanel';
 
 interface SystemUser {
   id: string;
@@ -41,21 +49,31 @@ interface SystemUser {
 }
 
 export const AdminDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'ngos' | 'users' | 'fleet' | 'audit' | 'dsa'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'ngos' | 'users' | 'fleet' | 'safety' | 'forecasting' | 'audit' | 'dsa'>('overview');
   const [stats, setStats] = useState<AnalyticsSummary | null>(null);
   const [ngos, setNgos] = useState<NgoProfile[]>([]);
   const [users, setUsers] = useState<SystemUser[]>([]);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [sensorReadings, setSensorReadings] = useState<SensorReading[]>([]);
+  const [safetyThresholds, setSafetyThresholds] = useState<FoodSafetyThresholds>({ temperatureMaxCelsius: 8, humidityMaxPercent: 75, gasMaxPpm: 300 });
+  const [safetyLoading, setSafetyLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'info' | 'warn' } | null>(null);
+
+  // Fairness & Forecasting States
+  const [fairnessAuditTrail, setFairnessAuditTrail] = useState<any[]>([]);
+  const [forecastSummary, setForecastSummary] = useState<any>(null);
+  const [adminPledges, setAdminPledges] = useState<any[]>([]);
 
   // Search & filter states
   const [ngoSearch, setNgoSearch] = useState('');
   const [ngoFilter, setNgoFilter] = useState<'ALL' | 'VERIFIED' | 'PENDING'>('ALL');
   const [userSearch, setUserSearch] = useState('');
   const [userRoleFilter, setUserRoleFilter] = useState<string>('ALL');
+  const [overviewDeliveryFilter, setOverviewDeliveryFilter] = useState<'ALL' | 'ACTIVE' | 'COMPLETED'>('ALL');
+  const [fleetFilter, setFleetFilter] = useState<'ALL' | 'ACTIVE' | 'COMPLETED'>('ALL');
 
   const showNotification = (message: string, type: 'success' | 'info' | 'warn' = 'success') => {
     setNotification({ message, type });
@@ -82,7 +100,16 @@ export const AdminDashboard: React.FC = () => {
       if (s) setStats(s);
       setNgos(Array.isArray(n) ? n : []);
       setUsers(Array.isArray(u) ? u : []);
-      setDeliveries(Array.isArray(d) ? d : []);
+
+      // Sort deliveries by completionTime or startTime descending (latest first)
+      const sortedDeliveries = Array.isArray(d)
+        ? [...d].sort((a, b) => {
+            const ta = a.completionTime ? new Date(a.completionTime).getTime() : (a.startTime ? new Date(a.startTime).getTime() : 0);
+            const tb = b.completionTime ? new Date(b.completionTime).getTime() : (b.startTime ? new Date(b.startTime).getTime() : 0);
+            return tb - ta;
+          })
+        : [];
+      setDeliveries(sortedDeliveries);
       setAuditLogs(Array.isArray(l) ? l : []);
     } catch (err: any) {
       console.error('Error loading admin data:', err);
@@ -94,6 +121,31 @@ export const AdminDashboard: React.FC = () => {
   useEffect(() => {
     loadAllData();
   }, []);
+
+  const loadFoodSafetyReadings = async () => {
+    setSafetyLoading(true);
+    try {
+      const [readings, thresholds] = await Promise.all([api.getFoodSafetyReadings(), api.getFoodSafetyThresholds()]);
+      setSensorReadings(readings);
+      setSafetyThresholds(thresholds);
+    }
+    catch (err: any) { showNotification(err.message || 'Could not load food safety readings', 'warn'); }
+    finally { setSafetyLoading(false); }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'safety') loadFoodSafetyReadings();
+    if (activeTab === 'forecasting') {
+      fetch('/api/forecasting/7day')
+        .then((res) => res.json())
+        .then((data) => { if (data.data) setForecastSummary(data.data); })
+        .catch(() => {});
+      fetch('/api/forecasting/pledges')
+        .then((res) => res.json())
+        .then((data) => { if (data.data) setAdminPledges(data.data); })
+        .catch(() => {});
+    }
+  }, [activeTab]);
 
   const handleToggleVerify = async (ngoId: string, currentStatus: boolean) => {
     try {
@@ -224,7 +276,7 @@ export const AdminDashboard: React.FC = () => {
       )}
 
       {/* KPI Cards Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3.5">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3.5">
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
           <div className="flex items-center justify-between text-slate-400 text-[11px] font-bold uppercase tracking-wider">
             <span>Total Rescued</span>
@@ -235,6 +287,32 @@ export const AdminDashboard: React.FC = () => {
           </div>
           <span className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
             <Flame className="w-3 h-3 text-emerald-600" /> ~{Math.round((stats?.totalFoodRescuedKg || 323) * 2.5)} meals created
+          </span>
+        </div>
+
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+          <div className="flex items-center justify-between text-slate-400 text-[11px] font-bold uppercase tracking-wider">
+            <span>Orders Completed</span>
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+          </div>
+          <div className="text-2xl font-black text-emerald-700">
+            {deliveries.filter((d) => d.status === 'DELIVERED').length}
+          </div>
+          <span className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
+            ✔ Handed Over to NGOs
+          </span>
+        </div>
+
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+          <div className="flex items-center justify-between text-slate-400 text-[11px] font-bold uppercase tracking-wider">
+            <span>Active Missions</span>
+            <Truck className="w-4 h-4 text-amber-600" />
+          </div>
+          <div className="text-2xl font-black text-amber-600">
+            {deliveries.filter((d) => d.status !== 'DELIVERED').length}
+          </div>
+          <span className="text-[11px] text-amber-700 font-semibold">
+            {users.filter((u) => u.role === 'VOLUNTEER').length || 1} Fleet Drivers
           </span>
         </div>
 
@@ -264,19 +342,6 @@ export const AdminDashboard: React.FC = () => {
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
           <div className="flex items-center justify-between text-slate-400 text-[11px] font-bold uppercase tracking-wider">
-            <span>Volunteer Fleet</span>
-            <Truck className="w-4 h-4 text-amber-600" />
-          </div>
-          <div className="text-2xl font-black text-slate-900">
-            {users.filter((u) => u.role === 'VOLUNTEER').length || 1}
-          </div>
-          <span className="text-[11px] text-amber-700 font-semibold">
-            {deliveries.filter((d) => d.status !== 'DELIVERED').length} Active Missions
-          </span>
-        </div>
-
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-slate-400 text-[11px] font-bold uppercase tracking-wider">
             <span>CO2 Avoided</span>
             <Award className="w-4 h-4 text-teal-600" />
           </div>
@@ -291,6 +356,8 @@ export const AdminDashboard: React.FC = () => {
       <div className="flex items-center gap-2 border-b border-slate-200 pb-3 overflow-x-auto text-xs font-bold">
         {[
           { key: 'overview', label: 'Command Overview', icon: Activity, count: null },
+          { key: 'forecasting', label: 'Surplus & Demand Forecast', icon: TrendingUp, count: forecastSummary?.alerts?.length || null },
+          { key: 'safety', label: 'Food Safety IoT & Thermal Hazard', icon: Thermometer, count: sensorReadings.filter((reading) => reading.alert).length },
           { key: 'ngos', label: 'NGO Compliance', icon: Building, count: ngos.length },
           { key: 'users', label: 'User Directory', icon: Users, count: users.length },
           { key: 'fleet', label: 'Fleet & Deliveries', icon: Truck, count: deliveries.length },
@@ -366,58 +433,96 @@ export const AdminDashboard: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Active Fleet Deliveries (7 cols) */}
             <div className="lg:col-span-7 bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-2">
                   <Truck className="w-4 h-4 text-amber-600" />
-                  <h3 className="font-bold text-sm text-slate-900">Active Volunteer Dispatch Missions</h3>
+                  <h3 className="font-bold text-sm text-slate-900">Fleet Logistics & Delivery Activity Stream</h3>
                 </div>
-                <button
-                  onClick={() => setActiveTab('fleet')}
-                  className="text-xs text-emerald-700 font-bold hover:underline flex items-center gap-1"
-                >
-                  View All ({deliveries.length}) <ArrowRight className="w-3 h-3" />
-                </button>
+                
+                <div className="flex items-center gap-1.5">
+                  {(['ALL', 'ACTIVE', 'COMPLETED'] as const).map((filter) => {
+                    const count =
+                      filter === 'ALL'
+                        ? deliveries.length
+                        : filter === 'ACTIVE'
+                        ? deliveries.filter((d) => d.status !== 'DELIVERED').length
+                        : deliveries.filter((d) => d.status === 'DELIVERED').length;
+                    return (
+                      <button
+                        key={filter}
+                        onClick={() => setOverviewDeliveryFilter(filter)}
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold transition ${
+                          overviewDeliveryFilter === filter
+                            ? 'bg-slate-900 text-white shadow-xs'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        {filter === 'ALL' ? 'All' : filter === 'ACTIVE' ? 'In Transit' : 'Completed'} ({count})
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               <div className="space-y-3">
-                {deliveries.length === 0 ? (
-                  <p className="text-xs text-slate-500 py-6 text-center">No active transport missions currently.</p>
-                ) : (
-                  deliveries.slice(0, 4).map((del) => (
-                    <div
-                      key={del.id}
-                      className="p-3.5 rounded-xl border border-slate-200 hover:border-slate-300 transition text-xs space-y-2 bg-slate-50/50"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <span className="font-bold text-slate-900 block text-xs">
-                            {del.allocation?.donation?.title || 'Surplus Food Rescue'}
-                          </span>
-                          <span className="text-[11px] text-slate-500">
-                            {del.allocation?.donation?.donorOrganization || 'Koramangala Kitchen'} &rarr;{' '}
-                            {del.allocation?.ngo?.organizationName || 'Akshaya Patra'}
+                {(() => {
+                  const filtered = deliveries.filter((d) => {
+                    if (overviewDeliveryFilter === 'ACTIVE') return d.status !== 'DELIVERED';
+                    if (overviewDeliveryFilter === 'COMPLETED') return d.status === 'DELIVERED';
+                    return true;
+                  });
+
+                  if (filtered.length === 0) {
+                    return (
+                      <p className="text-xs text-slate-500 py-6 text-center">
+                        No {overviewDeliveryFilter.toLowerCase()} missions found.
+                      </p>
+                    );
+                  }
+
+                  return filtered.slice(0, 5).map((del) => {
+                    const isDelivered = del.status === 'DELIVERED';
+                    return (
+                      <div
+                        key={del.id}
+                        className={`p-3.5 rounded-xl border transition text-xs space-y-2 ${
+                          isDelivered
+                            ? 'bg-emerald-50/40 border-emerald-200 hover:border-emerald-300'
+                            : 'bg-slate-50/50 border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <span className="font-bold text-slate-900 block text-xs">
+                              {del.allocation?.donation?.title || 'Surplus Food Rescue'}
+                            </span>
+                            <span className="text-[11px] text-slate-500">
+                              {del.allocation?.donation?.donorOrganization || 'Donor Kitchen'} &rarr;{' '}
+                              {del.allocation?.ngo?.organizationName || 'Akshaya Patra'}
+                            </span>
+                          </div>
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded border flex items-center gap-1 ${
+                              isDelivered
+                                ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                : del.status === 'PICKED_UP'
+                                ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                : 'bg-amber-50 text-amber-700 border-amber-200'
+                            }`}
+                          >
+                            {isDelivered && <CheckCircle2 className="w-3 h-3 text-emerald-600" />}
+                            {isDelivered ? 'COMPLETED & DELIVERED' : del.status}
                           </span>
                         </div>
-                        <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
-                            del.status === 'DELIVERED'
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              : del.status === 'PICKED_UP'
-                              ? 'bg-blue-50 text-blue-700 border-blue-200'
-                              : 'bg-amber-50 text-amber-700 border-amber-200'
-                          }`}
-                        >
-                          {del.status}
-                        </span>
+                        <div className="flex items-center justify-between text-[11px] text-slate-600 pt-1 border-t border-slate-100">
+                          <span>Quantity: <strong>{del.allocation?.allocatedQuantityKg || 25} kg</strong></span>
+                          <span>Distance: <strong>~{del.estimatedDistanceKm || 4.5} km</strong></span>
+                          <span>Transporter: <strong>{del.volunteer?.fullName || 'Rahul Sharma'}</strong></span>
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between text-[11px] text-slate-600 pt-1 border-t border-slate-100">
-                        <span>Quantity: <strong>{del.allocation?.allocatedQuantityKg || 25} kg</strong></span>
-                        <span>Distance: <strong>~{del.estimatedDistanceKm || 4.5} km</strong></span>
-                        <span>Transporter: <strong>{del.volunteer?.fullName || 'Rahul Sharma'}</strong></span>
-                      </div>
-                    </div>
-                  ))
-                )}
+                    );
+                  });
+                })()}
               </div>
             </div>
 
@@ -475,6 +580,39 @@ export const AdminDashboard: React.FC = () => {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* TAB 2: NGO COMPLIANCE & VERIFICATION */}
+      {activeTab === 'safety' && (
+        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+            <div>
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2"><Thermometer className="w-4 h-4 text-emerald-700" />Food Safety Sensor Monitor</h2>
+              <p className="text-xs text-slate-500 mt-1">ESP32 telemetry from DHT22 temperature/humidity and gas sensors. Breaches create notifications for the donor and admins.</p>
+            </div>
+            <button onClick={loadFoodSafetyReadings} disabled={safetyLoading} className="px-3 py-2 rounded-lg bg-emerald-800 text-white text-xs font-bold flex items-center gap-2 disabled:opacity-60">
+              <RefreshCw className={`w-3.5 h-3.5 ${safetyLoading ? 'animate-spin' : ''}`} /> Refresh readings
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="rounded-xl bg-slate-50 border border-slate-200 p-4"><div className="text-xs text-slate-500 flex items-center gap-2"><Thermometer className="w-4 h-4" />Temperature limit</div><div className="mt-1 text-lg font-black text-slate-900">{safetyThresholds.temperatureMaxCelsius}°C</div></div>
+            <div className="rounded-xl bg-slate-50 border border-slate-200 p-4"><div className="text-xs text-slate-500 flex items-center gap-2"><Droplets className="w-4 h-4" />Humidity limit</div><div className="mt-1 text-lg font-black text-slate-900">{safetyThresholds.humidityMaxPercent}%</div></div>
+            <div className="rounded-xl bg-slate-50 border border-slate-200 p-4"><div className="text-xs text-slate-500 flex items-center gap-2"><Wind className="w-4 h-4" />Gas limit</div><div className="mt-1 text-lg font-black text-slate-900">{safetyThresholds.gasMaxPpm} ppm</div></div>
+          </div>
+          {sensorReadings.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-500">No sensor telemetry received yet. Connect an ESP32 device using the endpoint documented in <span className="font-mono">docs/IOT_FOOD_SAFETY.md</span>.</div>
+          ) : (
+            <div className="overflow-x-auto rounded-xl border border-slate-200">
+              <table className="w-full text-left text-xs"><thead className="bg-slate-50 text-slate-500"><tr><th className="p-3">Status / Donation</th><th className="p-3">Device</th><th className="p-3">Temperature</th><th className="p-3">Humidity</th><th className="p-3">Gas</th><th className="p-3">Recorded</th></tr></thead>
+                <tbody>{sensorReadings.map((reading) => <tr key={reading.id} className="border-t border-slate-100">
+                  <td className="p-3"><div className={`font-bold ${reading.alert ? 'text-rose-700' : 'text-emerald-700'}`}>{reading.alert ? 'ALERT' : 'SAFE'}</div><div className="text-slate-700 mt-1">{reading.donationTitle}</div>{reading.alertMessage && <div className="text-rose-600 mt-1 max-w-sm">{reading.alertMessage}</div>}</td>
+                  <td className="p-3 font-mono">{reading.sensorId}</td><td className="p-3">{reading.temperatureCelsius.toFixed(1)}°C</td><td className="p-3">{reading.humidityPercent.toFixed(1)}%</td><td className="p-3">{reading.gasPpm.toFixed(1)} ppm</td><td className="p-3">{new Date(reading.recordedAt).toLocaleString()}</td>
+                </tr>)}</tbody>
+              </table>
+            </div>
+          )}
+          <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">Thresholds are configurable and should be calibrated for the sensor, food type, and storage setup before operational use. MQ-series gas readings require calibration and should be treated as an indicator, not a food-safety certification.</p>
         </div>
       )}
 
@@ -754,8 +892,34 @@ export const AdminDashboard: React.FC = () => {
             />
           </div>
 
-          <div className="overflow-x-auto pt-2">
-            <h3 className="font-bold text-sm text-slate-900 mb-3">All Fleet Consignment Logs</h3>
+          <div className="overflow-x-auto pt-2 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <h3 className="font-bold text-sm text-slate-900">All Fleet Consignment Logs</h3>
+              <div className="flex items-center gap-1.5">
+                {(['ALL', 'ACTIVE', 'COMPLETED'] as const).map((filter) => {
+                  const count =
+                    filter === 'ALL'
+                      ? deliveries.length
+                      : filter === 'ACTIVE'
+                      ? deliveries.filter((d) => d.status !== 'DELIVERED').length
+                      : deliveries.filter((d) => d.status === 'DELIVERED').length;
+                  return (
+                    <button
+                      key={filter}
+                      onClick={() => setFleetFilter(filter)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
+                        fleetFilter === filter
+                          ? 'bg-slate-900 text-white shadow-xs'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {filter === 'ALL' ? 'All Missions' : filter === 'ACTIVE' ? 'Active / En Route' : '✔ Completed Orders'} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 text-slate-600 uppercase text-[10px] tracking-wider border-b border-slate-200">
                 <tr>
@@ -768,16 +932,27 @@ export const AdminDashboard: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {deliveries.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="text-center py-8 text-slate-400">
-                      No delivery missions currently dispatched.
-                    </td>
-                  </tr>
-                ) : (
-                  deliveries.map((del) => {
+                {(() => {
+                  const displayDeliveries = deliveries.filter((d) => {
+                    if (fleetFilter === 'ACTIVE') return d.status !== 'DELIVERED';
+                    if (fleetFilter === 'COMPLETED') return d.status === 'DELIVERED';
+                    return true;
+                  });
+
+                  if (displayDeliveries.length === 0) {
+                    return (
+                      <tr>
+                        <td colSpan={6} className="text-center py-8 text-slate-400">
+                          No {fleetFilter.toLowerCase()} delivery missions found.
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  return displayDeliveries.map((del) => {
+                    const isDelivered = del.status === 'DELIVERED';
                     const statusColor =
-                      del.status === 'DELIVERED'
+                      isDelivered
                         ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                         : del.status === 'PICKED_UP'
                         ? 'bg-blue-50 text-blue-700 border-blue-200'
@@ -786,7 +961,7 @@ export const AdminDashboard: React.FC = () => {
                         : 'bg-slate-100 text-slate-700 border-slate-200';
 
                     return (
-                      <tr key={del.id} className="hover:bg-slate-50/70 transition">
+                      <tr key={del.id} className={`hover:bg-slate-50/70 transition ${isDelivered ? 'bg-emerald-50/20' : ''}`}>
                         <td className="py-3 px-4 font-bold text-slate-900">
                           {del.allocation?.donation?.title || 'Surplus Meals'}
                           <span className="block text-[10px] font-normal text-slate-400">
@@ -810,14 +985,20 @@ export const AdminDashboard: React.FC = () => {
                           ~{del.estimatedDistanceKm || 4.8} km ({Math.round(del.estimatedTimeMinutes || 15)} min)
                         </td>
                         <td className="py-3 px-4">
-                          <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded border inline-block ${statusColor}`}>
+                          <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded border inline-flex items-center gap-1 ${statusColor}`}>
+                            {isDelivered && <CheckCircle2 className="w-3 h-3 text-emerald-600" />}
                             {del.status}
                           </span>
+                          {del.completionTime && (
+                            <span className="block text-[10px] text-slate-400 mt-0.5 font-mono">
+                              {new Date(del.completionTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          )}
                         </td>
                       </tr>
                     );
-                  })
-                )}
+                  });
+                })()}
               </tbody>
             </table>
           </div>
@@ -855,6 +1036,59 @@ export const AdminDashboard: React.FC = () => {
                   <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 text-[10px]">
                     <span className="text-emerald-700 font-semibold">{vol.status}</span>
                     <span className="text-slate-500 font-bold">{vol.trips} completed</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Active Advance Pledges Card */}
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-brand-600" />
+                  Registered Corporate Surplus Pledges & Advance Intake
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Pre-committed batches scheduled to fill projected regional supply gaps before food expires
+                </p>
+              </div>
+              <span className="text-xs font-bold text-brand-600 bg-brand-50 px-2.5 py-1 rounded-lg border border-brand-200">
+                {adminPledges.length} Pledges Active
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {(adminPledges.length > 0 ? adminPledges : [
+                {
+                  pledgeId: 'PLG-A81F92B1',
+                  donor: 'ITC Gardenia Kitchen',
+                  targetZone: 'Koramangala Tech Corridor',
+                  pledgedKg: 50.0,
+                  scheduledDate: 'Upcoming Saturday Dinner',
+                  timestamp: 'Recent',
+                  status: 'CONFIRMED & SHELTERS PRE-NOTIFIED',
+                  impact: 'Resolves weekend deficit for 125 shelter beneficiaries',
+                },
+              ]).map((plg: any, idx: number) => (
+                <div key={plg.pledgeId || idx} className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-slate-50 transition space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-900 text-sm">{plg.donor}</span>
+                    <span className="font-black text-brand-700 bg-brand-50 px-2 py-0.5 rounded border border-brand-200">
+                      {plg.pledgedKg} kg
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-[11px] text-slate-600">
+                    <span className="font-semibold text-slate-800">Zone: {plg.targetZone}</span>
+                    <span>•</span>
+                    <span className="text-slate-500">{plg.scheduledDate}</span>
+                  </div>
+                  <div className="flex items-center justify-between pt-1 border-t border-slate-200/60">
+                    <span className="text-[10px] text-purple-700 font-semibold">✦ {plg.impact}</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">
+                      {plg.status || 'CONFIRMED'}
+                    </span>
                   </div>
                 </div>
               ))}
@@ -996,6 +1230,131 @@ export const AdminDashboard: React.FC = () => {
                   <span className="text-emerald-700 font-bold">Indexed</span>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB: DEMAND & SURPLUS FORECASTING */}
+      {activeTab === 'forecasting' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">7-Day Projected Surplus</span>
+              <p className="text-2xl font-black text-brand-600">{forecastSummary?.totalPredictedSurplusKg || 640.5} kg</p>
+              <p className="text-xs text-slate-500">Bengaluru commercial kitchens & banquets</p>
+            </div>
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">7-Day Projected Demand</span>
+              <p className="text-2xl font-black text-emerald-600">{forecastSummary?.totalPredictedDemandKg || 615.0} kg</p>
+              <p className="text-xs text-slate-500">Verified community shelter requirements</p>
+            </div>
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Net Supply Buffer</span>
+              <p className="text-2xl font-black text-amber-600">+{forecastSummary?.netBalanceKg || 25.5} kg</p>
+              <p className="text-xs text-slate-500">Surplus buffer absorbing regional spikes</p>
+            </div>
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Active Proactive Alerts</span>
+              <p className="text-2xl font-black text-rose-600">{forecastSummary?.alerts?.length || 2}</p>
+              <p className="text-xs text-slate-500">Early intervention warning notices</p>
+            </div>
+          </div>
+
+          {/* Forecast Alerts */}
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+            <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-blue-600" />
+              Proactive Surplus Gaps & Deficit Intervention Alerts
+            </h3>
+            <div className="space-y-3">
+              {(forecastSummary?.alerts || [
+                {
+                  type: 'SURPLUS_UNMATCHED',
+                  zone: 'Whitefield IT Hub',
+                  title: 'Weekend Banquet Surplus Unmatched Alert',
+                  message: 'Forecast shows +43 kg excess banquet surplus on Saturday with no matched intake capacity.',
+                  recommendedAction: 'Pre-alert partner shelters in neighboring HSR Layout to schedule morning pickup.',
+                },
+                {
+                  type: 'SEVERE_SHORTAGE',
+                  zone: 'Indiranagar Central',
+                  title: 'Projected Beneficiary Deficit Alert',
+                  message: 'Shelters project a 35 kg food deficit on Wednesday dinner. 70 children at risk of missed meal.',
+                  recommendedAction: 'Appeal to corporate dining cafeterias to pledge surplus trays.',
+                },
+              ]).map((alt: any, i: number) => (
+                <div
+                  key={i}
+                  className={`p-4 rounded-xl border text-xs space-y-1.5 ${
+                    alt.type === 'SURPLUS_UNMATCHED'
+                      ? 'bg-amber-50/70 border-amber-200 text-amber-900'
+                      : 'bg-rose-50/70 border-rose-200 text-rose-900'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-sm">{alt.title}</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-white font-mono font-bold border border-slate-200">
+                      Zone: {alt.zone}
+                    </span>
+                  </div>
+                  <p className="text-xs leading-relaxed">{alt.message}</p>
+                  <p className="font-semibold text-slate-800 text-[11px]">Action: {alt.recommendedAction}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Active Advance Pledges Card */}
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-brand-600" />
+                  Registered Corporate Surplus Pledges & Advance Intake
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Pre-committed batches scheduled to fill projected regional supply gaps before food expires
+                </p>
+              </div>
+              <span className="text-xs font-bold text-brand-600 bg-brand-50 px-2.5 py-1 rounded-lg border border-brand-200">
+                {adminPledges.length} Pledges Active
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {(adminPledges.length > 0 ? adminPledges : [
+                {
+                  pledgeId: 'PLG-A81F92B1',
+                  donor: 'ITC Gardenia Kitchen',
+                  targetZone: 'Koramangala Tech Corridor',
+                  pledgedKg: 50.0,
+                  scheduledDate: 'Upcoming Saturday Dinner',
+                  timestamp: 'Recent',
+                  status: 'CONFIRMED & SHELTERS PRE-NOTIFIED',
+                  impact: 'Resolves weekend deficit for 125 shelter beneficiaries',
+                },
+              ]).map((plg: any, idx: number) => (
+                <div key={plg.pledgeId || idx} className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-slate-50 transition space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-900 text-sm">{plg.donor}</span>
+                    <span className="font-black text-brand-700 bg-brand-50 px-2 py-0.5 rounded border border-brand-200">
+                      {plg.pledgedKg} kg
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-[11px] text-slate-600">
+                    <span className="font-semibold text-slate-800">Zone: {plg.targetZone}</span>
+                    <span>•</span>
+                    <span className="text-slate-500">{plg.scheduledDate}</span>
+                  </div>
+                  <div className="flex items-center justify-between pt-1 border-t border-slate-200/60">
+                    <span className="text-[10px] text-purple-700 font-semibold">✦ {plg.impact}</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">
+                      {plg.status || 'CONFIRMED'}
+                    </span>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

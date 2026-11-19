@@ -15,6 +15,9 @@ public class NgoProfileResponseDto {
     private String dietaryPreferences;
     private boolean verified;
     private double availableCapacityKg;
+    private int vulnerabilityIndex;
+    private String targetBeneficiaryGroup;
+    private double dailyDeficitKg;
     private String contactPerson;
     private String email;
     private String phone;
@@ -35,6 +38,9 @@ public class NgoProfileResponseDto {
         dto.setDietaryPreferences(n.getDietaryPreferences());
         dto.setVerified(n.isVerified());
         dto.setAvailableCapacityKg(n.getAvailableCapacityKg());
+        dto.setVulnerabilityIndex(n.getVulnerabilityIndex());
+        dto.setTargetBeneficiaryGroup(n.getTargetBeneficiaryGroup());
+        dto.setDailyDeficitKg(n.getDailyDeficitKg());
 
         if (n.getUser() != null) {
             dto.setContactPerson(n.getUser().getFullName());
@@ -66,6 +72,12 @@ public class NgoProfileResponseDto {
     public void setVerified(boolean verified) { this.verified = verified; }
     public double getAvailableCapacityKg() { return availableCapacityKg; }
     public void setAvailableCapacityKg(double availableCapacityKg) { this.availableCapacityKg = availableCapacityKg; }
+    public int getVulnerabilityIndex() { return vulnerabilityIndex; }
+    public void setVulnerabilityIndex(int vulnerabilityIndex) { this.vulnerabilityIndex = vulnerabilityIndex; }
+    public String getTargetBeneficiaryGroup() { return targetBeneficiaryGroup; }
+    public void setTargetBeneficiaryGroup(String targetBeneficiaryGroup) { this.targetBeneficiaryGroup = targetBeneficiaryGroup; }
+    public double getDailyDeficitKg() { return dailyDeficitKg; }
+    public void setDailyDeficitKg(double dailyDeficitKg) { this.dailyDeficitKg = dailyDeficitKg; }
     public String getContactPerson() { return contactPerson; }
     public void setContactPerson(String contactPerson) { this.contactPerson = contactPerson; }
     public String getEmail() { return email; }

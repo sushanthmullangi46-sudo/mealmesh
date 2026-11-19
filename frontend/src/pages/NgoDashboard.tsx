@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { Donation, NgoProfile, Allocation } from '../types/mealmesh';
 import { LiveDeliveryTracker } from '../maps/LiveDeliveryTracker';
+import { FairnessCriteriaModal } from '../components/FairnessCriteriaModal';
+import { SurplusForecastModal } from '../components/SurplusForecastModal';
+import { ThermalExposurePanel } from '../components/ThermalExposurePanel';
 import {
   HeartHandshake,
   Database,
@@ -16,6 +19,11 @@ import {
   Users,
   Bike,
   X,
+  Sliders,
+  TrendingUp,
+  QrCode,
+  Thermometer,
+  ShieldCheck,
 } from 'lucide-react';
 
 export const NgoDashboard: React.FC = () => {
@@ -29,6 +37,9 @@ export const NgoDashboard: React.FC = () => {
   const [capacityMax, setCapacityMax] = useState<number>(250);
   const [message, setMessage] = useState<string | null>(null);
   const [showLiveRadar, setShowLiveRadar] = useState<boolean>(true);
+  const [showFairnessModal, setShowFairnessModal] = useState<boolean>(false);
+  const [showForecastModal, setShowForecastModal] = useState<boolean>(false);
+  const [thermalDonation, setThermalDonation] = useState<{ id: string; title: string } | null>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -84,6 +95,23 @@ export const NgoDashboard: React.FC = () => {
     }
   };
 
+  const handleThermalDecisionNgo = (decision: 'APPROVED' | 'QUARANTINED' | 'DIVERTED', donationId?: string) => {
+    if (decision !== 'APPROVED') {
+      const targetId = donationId || thermalDonation?.id;
+      setAvailableFood((prev) => prev.filter((f) => f.id !== targetId));
+      setMessage(
+        decision === 'QUARANTINED'
+          ? '⛔ Consignment Quarantined: Failed thermal holding criteria. Removed from available surplus queue.'
+          : '♻️ Consignment Diverted: Exceeded danger zone limit. Diverted to compost and removed from claims queue.'
+      );
+      setTimeout(() => setThermalDonation(null), 1200);
+      setTimeout(() => setMessage(null), 6000);
+    } else {
+      setMessage('✔ Consignment QA Approved: Thermal holding criteria compliant. Cleared for distribution.');
+      setTimeout(() => setMessage(null), 5000);
+    }
+  };
+
   const availableCap = Math.max(0, capacityMax - capacityCurrent);
   const capPercentage = Math.min(100, Math.round((capacityCurrent / Math.max(1, capacityMax)) * 100));
 
@@ -110,23 +138,53 @@ export const NgoDashboard: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setShowFairnessModal(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-50 border border-purple-200 text-xs font-bold text-purple-800 hover:bg-purple-100 transition shadow-sm"
+          >
+            <Sliders className="w-3.5 h-3.5 text-purple-600" />
+            <span>Community Fairness Profile</span>
+          </button>
+
+          <button
+            onClick={() => setShowForecastModal(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-50 border border-blue-200 text-xs font-bold text-blue-800 hover:bg-blue-100 transition shadow-sm"
+          >
+            <TrendingUp className="w-3.5 h-3.5 text-blue-600" />
+            <span>Surplus Forecast</span>
+          </button>
+
           <button
             onClick={async () => {
               setLoading(true);
               try {
-                await api.simulateUrgentDonation();
-                setMessage('⚡ Fresh urgent surplus food batch simulated and added to feed!');
-                setTimeout(() => setMessage(null), 4000);
-                await loadData();
+                const created = await api.simulateUrgentDonation();
+                if (created) {
+                  // Optimistically prepend to active surplus food list so it is immediately #1
+                  setAvailableFood((prev) => [created, ...prev.filter((f) => f.id !== created.id)]);
+                  setMessage(
+                    `⚡ Simulated Urgent Batch Generated: "${created.title}" (40 kg) is now active and ranked #1 in your claim feed!`
+                  );
+                  // Scroll smoothly into view
+                  setTimeout(() => {
+                    const el = document.getElementById('available-surplus-batches');
+                    el?.scrollIntoView({ behavior: 'smooth' });
+                  }, 150);
+                } else {
+                  await loadData();
+                  setMessage('⚡ Fresh urgent surplus food batch simulated and added to feed!');
+                }
+                setTimeout(() => setMessage(null), 8000);
               } catch (e: any) {
                 console.error(e);
+                alert('Simulation failed: ' + (e.message || 'Unknown error'));
               } finally {
                 setLoading(false);
               }
             }}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition shadow-sm"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-300 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition shadow-sm hover:scale-[1.02]"
           >
             <Zap className="w-3.5 h-3.5 text-emerald-600" />
             <span>Generate Surplus Batch</span>
@@ -219,11 +277,16 @@ export const NgoDashboard: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left Column: Surplus Discovery Feed (7 cols) */}
         <div className="lg:col-span-7 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <h2 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-              <Box className="w-4 h-4 text-emerald-600" />
-              Available Surplus Food (Min-Heap Priority)
-            </h2>
+          <div id="available-surplus-batches" className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 scroll-mt-6">
+            <div>
+              <h2 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                <Box className="w-4 h-4 text-emerald-600" />
+                Available Surplus Batches for Immediate Claim
+              </h2>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Priority ordered using <span className="font-semibold text-emerald-700">Min-Heap (Expiry × Urgency Weight)</span>
+              </p>
+            </div>
 
             {/* Filter buttons */}
             <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1 text-[11px]">
@@ -249,11 +312,22 @@ export const NgoDashboard: React.FC = () => {
             ) : (
               filteredFood.map((food) => {
                 const isUrgent = food.urgency === 'CRITICAL' || food.urgency === 'HIGH';
+                const isSimulated = food.title.includes('Grand Palace');
                 return (
                   <div
                     key={food.id}
-                    className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:border-blue-400 transition space-y-3"
+                    className={`rounded-2xl p-5 border transition space-y-3 relative ${
+                      isSimulated
+                        ? 'border-emerald-500 ring-2 ring-emerald-400/30 shadow-md bg-gradient-to-r from-emerald-50/40 via-white to-white'
+                        : 'bg-white border-slate-200 shadow-sm hover:border-blue-400'
+                    }`}
                   >
+                    {isSimulated && (
+                      <div className="flex items-center gap-1.5 mb-1 px-2.5 py-1 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-extrabold w-fit">
+                        <Zap className="w-3 h-3 text-emerald-600 fill-emerald-600 animate-pulse" />
+                        <span>SIMULATED URGENT BATCH • READY TO CLAIM</span>
+                      </div>
+                    )}
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="flex items-center gap-2">
@@ -402,12 +476,62 @@ export const NgoDashboard: React.FC = () => {
                   <p className="text-[11px] text-slate-600">
                     From: {alloc.donation?.donorOrganization || 'Bengaluru Kitchen'}
                   </p>
+
+                  {alloc.fairnessExplanation && (
+                    <div className="p-2 rounded-lg bg-purple-50 text-[11px] text-purple-900 border border-purple-200 leading-snug">
+                      <span className="font-bold text-purple-950">Fairness Decision: </span>
+                      {alloc.fairnessExplanation}
+                    </div>
+                  )}
+
+                  <div className="pt-1 flex items-center justify-between border-t border-slate-100 mt-2">
+                    <button
+                      onClick={() => setThermalDonation({ id: alloc.donation?.id || 'don-1', title: alloc.donation?.title || 'Batch' })}
+                      className="text-[11px] text-rose-600 hover:text-rose-700 font-semibold flex items-center gap-1"
+                    >
+                      <Thermometer className="w-3.5 h-3.5" />
+                      Thermal Safety Exposure
+                    </button>
+                    <span className="text-[10px] text-slate-400 font-medium">Inbound Redistribution</span>
+                  </div>
                 </div>
               ))
             )}
           </div>
         </div>
       </div>
+
+      {/* Modals */}
+      <FairnessCriteriaModal
+        isOpen={showFairnessModal}
+        onClose={() => setShowFairnessModal(false)}
+        ngoId={profile?.id}
+        onSaved={loadData}
+      />
+
+      <SurplusForecastModal
+        isOpen={showForecastModal}
+        onClose={() => setShowForecastModal(false)}
+      />
+
+      {thermalDonation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="relative w-full max-w-xl">
+            <button
+              onClick={() => setThermalDonation(null)}
+              className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center shadow-lg hover:bg-slate-800 z-10"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <ThermalExposurePanel
+              donationId={thermalDonation.id}
+              foodTitle={thermalDonation.title}
+              onClose={() => setThermalDonation(null)}
+              onDecision={handleThermalDecisionNgo}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

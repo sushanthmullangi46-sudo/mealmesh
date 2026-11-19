@@ -23,26 +23,25 @@ interface LandingPageProps {
   onDemoLogin: (role: UserRole) => void;
 }
 
+const DATA_STRUCTURES = [
+  { name: 'Binary Min-Heap', complexity: 'O(log n) insert / extract', use: 'Orders surplus batches so the one closest to expiry (weighted by urgency) is always rescued first.', where: 'Donor and NGO feeds' },
+  { name: 'Weighted Graph + Dijkstra', complexity: 'O((V+E) log V)', use: 'Bengaluru junctions are vertices and roads are weighted edges; Dijkstra finds the shortest pickup-to-shelter route.', where: 'Volunteer navigation' },
+  { name: 'Greedy Multi-Criteria Allocator', complexity: 'O(n log n)', use: 'Scores every NGO on distance, free capacity, diet match and urgency (0-100), then fills the best ones first.', where: 'Run Greedy Match' },
+  { name: 'Hash Table (separate chaining)', complexity: 'O(1) average lookup', use: 'Polynomial rolling hash with resizing at load factor 0.75. Adds up kg per food category for the impact charts.', where: 'Analytics categories' },
+  { name: 'Stack (linked)', complexity: 'O(1) push / pop', use: 'Every admin decision is pushed; Undo pops the last one and reverses it (last in, first out).', where: 'Admin undo' },
+  { name: 'Queue (linked)', complexity: 'O(1) enqueue / dequeue', use: 'Actions done while offline are replayed in the exact order they happened (first in, first out) when the connection returns.', where: 'Offline sync' },
+  { name: 'Doubly Linked List', complexity: 'O(1) add at either end', use: 'Builds the donation timeline: urgent batches from the heap first, then history, walkable both ways.', where: 'Donor timeline' },
+  { name: 'Trie (prefix tree)', complexity: 'O(L) per search', use: 'Type a few letters of a dish and matching names appear instantly. Only the prefix characters are walked.', where: 'Donor dish autocomplete' },
+  { name: 'Disjoint Set Union', complexity: 'O(α(n)) per operation', use: 'Donors and NGOs within 3 km are union-ed; the number of sets left is the number of delivery zones.', where: 'Analytics delivery zones' },
+];
+
 export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onDemoLogin }) => {
   const [stats, setStats] = useState<AnalyticsSummary | null>(null);
 
   useEffect(() => {
-    api.getAnalyticsSummary().then(setStats).catch(() => {
-      // Default fallback stats if backend is starting
-      setStats({
-        totalFoodRescuedKg: 1845.5,
-        totalMealsDistributed: 4610,
-        totalPeopleFed: 4610,
-        co2EmissionsSavedKg: 4613.8,
-        financialValueInr: 221460,
-        activeDonorsCount: 15,
-        registeredNgosCount: 10,
-        activeVolunteersCount: 12,
-        completedDeliveriesCount: 48,
-        rescuedByCategory: [],
-        weeklyTrend: [],
-      });
-    });
+    // Live numbers from the backend; if it is still starting, the tiles simply stay empty
+    // instead of showing made-up figures.
+    api.getAnalyticsSummary().then(setStats).catch(() => setStats(null));
   }, []);
 
   return (
@@ -92,7 +91,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onDemoLogi
             <h3 className="text-2xl sm:text-3xl font-extrabold text-emerald-800 mt-1">
               {stats?.totalFoodRescuedKg.toLocaleString()} <span className="text-sm font-semibold">kg</span>
             </h3>
-            <span className="text-[11px] text-slate-500">From 15+ City Donors</span>
+            <span className="text-[11px] text-slate-500">From {stats?.activeDonorsCount ?? 0} donor accounts</span>
           </div>
           <div>
             <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Meals Provided</p>
@@ -307,60 +306,38 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onDemoLogi
         </div>
       </section>
 
-      {/* Demonstration Testimonials */}
+      {/* Data structures behind the platform */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center mb-10">
-          <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Community Feedback</span>
+          <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Built From Scratch</span>
           <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">
-            Trusted by Bengaluru Food Rescuers
+            Nine Data Structures Power Every Screen
           </h2>
+          <p className="text-xs sm:text-sm text-slate-600 mt-2 max-w-2xl mx-auto">
+            Each one is our own Java class in the backend, built on plain arrays and hand-written nodes (no PriorityQueue, HashMap or LinkedList inside), and each one does a real job in the app.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-            <p className="text-xs text-slate-600 italic leading-relaxed">
-              "Before MealMesh, we had to throw away 20 to 30 kg of wholesome buffet meals every evening. Now our surplus is matched within minutes to an Akshaya Patra center 4 km away."
-            </p>
-            <div className="mt-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-emerald-700 text-white font-bold flex items-center justify-center text-xs">
-                SK
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {DATA_STRUCTURES.map((ds) => (
+            <button
+              key={ds.name}
+              type="button"
+              onClick={() => onNavigate('dsa-lab')}
+              className="text-left bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-300 transition group"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <h4 className="font-bold text-sm text-slate-900 group-hover:text-emerald-800">{ds.name}</h4>
+                <span className="shrink-0 font-mono text-[10px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  {ds.complexity}
+                </span>
               </div>
-              <div>
-                <h5 className="font-bold text-xs text-slate-900">Chef Suresh Kumar</h5>
-                <span className="text-[11px] text-slate-500">ITC Gardenia Kitchen, Koramangala</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-            <p className="text-xs text-slate-600 italic leading-relaxed">
-              "The dynamic capacity gauge ensures we never get overwhelmed by donations we cannot store. The automated priority queue prioritizes the exact items our kitchen needs first."
-            </p>
-            <div className="mt-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-blue-700 text-white font-bold flex items-center justify-center text-xs">
-                PR
-              </div>
-              <div>
-                <h5 className="font-bold text-xs text-slate-900">Pooja Ramanathan</h5>
-                <span className="text-[11px] text-slate-500">Distribution Lead, Feeding India HSR</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-            <p className="text-xs text-slate-600 italic leading-relaxed">
-              "Turn-by-turn route optimization with Dijkstra takes all the guesswork out of multi-stop pickups. I can pick up from two restaurants and deliver within 40 minutes."
-            </p>
-            <div className="mt-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-amber-700 text-white font-bold flex items-center justify-center text-xs">
-                RS
-              </div>
-              <div>
-                <h5 className="font-bold text-xs text-slate-900">Rahul Sharma</h5>
-                <span className="text-[11px] text-slate-500">Volunteer Transporter, Indiranagar</span>
-              </div>
-            </div>
-          </div>
+              <p className="text-xs text-slate-600 mt-2 leading-relaxed">{ds.use}</p>
+              <span className="inline-flex items-center gap-1 mt-3 text-[11px] font-semibold text-slate-500">
+                <MapPin className="w-3 h-3" /> {ds.where}
+              </span>
+            </button>
+          ))}
         </div>
       </section>
     </div>

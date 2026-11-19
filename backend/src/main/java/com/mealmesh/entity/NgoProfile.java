@@ -44,6 +44,21 @@ public class NgoProfile {
     @Column(name = "is_verified")
     private boolean isVerified = true;
 
+    @Column(name = "vulnerability_index")
+    private Integer vulnerabilityIndex = 7;
+
+    @Column(name = "target_beneficiary_group")
+    private String targetBeneficiaryGroup = "Underprivileged Children & Families";
+
+    @Column(name = "daily_deficit_kg")
+    private Double dailyDeficitKg = 45.0;
+
+    @Column(name = "days_since_last_served")
+    private Integer daysSinceLastServed = 2;
+
+    @Column(name = "historical_received_kg")
+    private Double historicalReceivedKg = 150.0;
+
     public NgoProfile() {}
 
     public NgoProfile(UUID id, User user, String organizationName, String registrationNumber,
@@ -99,4 +114,19 @@ public class NgoProfile {
     public double getAvailableCapacityKg() {
         return Math.max(0.0, maxStorageCapacityKg - currentStorageCapacityKg);
     }
+
+    public int getVulnerabilityIndex() { return vulnerabilityIndex != null ? vulnerabilityIndex : 7; }
+    public void setVulnerabilityIndex(Integer vulnerabilityIndex) { this.vulnerabilityIndex = vulnerabilityIndex; }
+
+    public String getTargetBeneficiaryGroup() { return targetBeneficiaryGroup != null ? targetBeneficiaryGroup : "Underprivileged Children & Families"; }
+    public void setTargetBeneficiaryGroup(String targetBeneficiaryGroup) { this.targetBeneficiaryGroup = targetBeneficiaryGroup; }
+
+    public double getDailyDeficitKg() { return dailyDeficitKg != null ? dailyDeficitKg : 45.0; }
+    public void setDailyDeficitKg(Double dailyDeficitKg) { this.dailyDeficitKg = dailyDeficitKg; }
+
+    public int getDaysSinceLastServed() { return daysSinceLastServed != null ? daysSinceLastServed : 2; }
+    public void setDaysSinceLastServed(Integer daysSinceLastServed) { this.daysSinceLastServed = daysSinceLastServed; }
+
+    public double getHistoricalReceivedKg() { return historicalReceivedKg != null ? historicalReceivedKg : 150.0; }
+    public void setHistoricalReceivedKg(Double historicalReceivedKg) { this.historicalReceivedKg = historicalReceivedKg; }
 }

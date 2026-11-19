@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { Donation } from '../types/mealmesh';
+import { SurplusForecastModal } from '../components/SurplusForecastModal';
+import { useOfflineSync } from '../services/offlineSyncManager';
 import {
   Utensils,
   PlusCircle,
@@ -12,6 +14,9 @@ import {
   Sparkles,
   RefreshCw,
   Thermometer,
+  QrCode,
+  TrendingUp,
+  Building,
 } from 'lucide-react';
 
 export const DonorDashboard: React.FC = () => {
@@ -19,6 +24,9 @@ export const DonorDashboard: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [matchingId, setMatchingId] = useState<string | null>(null);
   const [matchingStatus, setMatchingStatus] = useState<string | null>(null);
+  const [dishSuggestions, setDishSuggestions] = useState<string[]>([]);
+  const [showForecastModal, setShowForecastModal] = useState<boolean>(false);
+  const { isOnline, queueAction } = useOfflineSync();
 
   // Form state
   const [title, setTitle] = useState('');
@@ -32,17 +40,94 @@ export const DonorDashboard: React.FC = () => {
   const [storageTemp, setStorageTemp] = useState<number>(65);
   const [allergenInfo, setAllergenInfo] = useState('Contains Dairy/Gluten');
   const [pickupInstructions, setPickupInstructions] = useState('Collect from rear kitchen dispatch gate');
-  const [addressLine, setAddressLine] = useState('80 Feet Rd, Koramangala 4th Block, Bengaluru');
+  const [addressLine, setAddressLine] = useState('Old Airport Rd, Kodihalli, Indiranagar, Bengaluru');
+  const [donorVenue, setDonorVenue] = useState('The Leela Palace Banquet');
+  const [donorLatitude, setDonorLatitude] = useState(12.9606);
+  const [donorLongitude, setDonorLongitude] = useState(77.6484);
+
+  const VENUE_PRESETS = [
+    {
+      name: 'The Leela Palace Banquet',
+      address: 'Old Airport Rd, Kodihalli, Indiranagar, Bengaluru',
+      lat: 12.9606,
+      lng: 77.6484,
+      defaultDish: 'Royal Mughlai Vegetable Biryani & Paneer Gravy',
+    },
+    {
+      name: 'Infosys Corporate Dining',
+      address: 'Hosur Rd, Electronic City Phase 1, Bengaluru',
+      lat: 12.8399,
+      lng: 77.6770,
+      defaultDish: 'Executive Continental Baked Pasta & Herb Sourdough',
+    },
+    {
+      name: 'Taj West End Convention Centre',
+      address: 'Race Course Rd, High Grounds, Bengaluru',
+      lat: 12.9866,
+      lng: 77.5855,
+      defaultDish: 'Mysore Royal Feast Pulao & Kesar Badam Halwa',
+    },
+    {
+      name: 'Sheraton Grand Banquet Hall',
+      address: 'Dr. Rajkumar Rd, Rajajinagar, Bengaluru',
+      lat: 13.0112,
+      lng: 77.5550,
+      defaultDish: 'South Indian Sambar, Steamed Rice & Avial',
+    },
+    {
+      name: 'Corner House Foods',
+      address: '100ft Road, Indiranagar, Bengaluru',
+      lat: 12.9784,
+      lng: 77.6408,
+      defaultDish: 'Fresh Multigrain Sourdough Loaves & Croissants',
+    },
+    {
+      name: 'ITC Gardenia Kitchen',
+      address: '80 Feet Rd, Koramangala 4th Block, Bengaluru',
+      lat: 12.9352,
+      lng: 77.6245,
+      defaultDish: 'Grand Palace Buffet Surplus Meals',
+    },
+  ];
+
+  const handleVenueChange = (venueName: string) => {
+    setDonorVenue(venueName);
+    const preset = VENUE_PRESETS.find((v) => v.name === venueName);
+    if (preset) {
+      setAddressLine(preset.address);
+      setDonorLatitude(preset.lat);
+      setDonorLongitude(preset.lng);
+      if (!title || VENUE_PRESETS.some((v) => v.defaultDish === title)) {
+        setTitle(preset.defaultDish);
+      }
+    }
+  };
+
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'AVAILABLE' | 'RESERVED'>('ALL');
 
   const fetchDonations = async () => {
     setLoading(true);
     try {
-      const data = await api.getMyDonations();
-      setDonations(data);
-    } catch {
-      // Fallback to active donations if donor session is demo
-      const active = await api.getActiveDonations();
-      setDonations(active);
+      // Auto-ensure demo donor credentials if currently unauthenticated or role mismatch
+      const user = api.getCurrentUser();
+      if (!user || user.role !== 'DONOR') {
+        await api.demoLogin('DONOR');
+      }
+
+      let data = await api.getMyDonations();
+      if (!data || data.length === 0) {
+        // Fallback to active system donations so feed is never blank
+        data = await api.getActiveDonations();
+      }
+      setDonations(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to load donor donations:', err);
+      try {
+        const fallback = await api.getActiveDonations();
+        setDonations(Array.isArray(fallback) ? fallback : []);
+      } catch (e2) {
+        console.error(e2);
+      }
     } finally {
       setLoading(false);
     }
@@ -56,9 +141,22 @@ export const DonorDashboard: React.FC = () => {
     e.preventDefault();
     if (!title) return;
 
+    if (!isOnline) {
+      // Offline-first queued action
+      queueAction('DONATION_CREATE', `Surplus Food: ${title} (${quantityKg} kg)`, {
+        title, description, categoryName, dietaryType, foodType, quantityKg, servings,
+        hoursUntilExpiry, storageTemperatureCelsius: storageTemp, allergenInfo, pickupInstructions, addressLine
+      });
+      setTitle('');
+      setDescription('');
+      setMatchingStatus('📡 Offline Mode: Food donation saved locally in offline queue. Will auto-sync when network returns.');
+      setTimeout(() => setMatchingStatus(null), 6000);
+      return;
+    }
+
     try {
       setLoading(true);
-      await api.postDonation({
+      const created = await api.postDonation({
         title,
         description,
         categoryName,
@@ -71,16 +169,23 @@ export const DonorDashboard: React.FC = () => {
         allergenInfo,
         pickupInstructions,
         addressLine,
-        latitude: 12.9352,
-        longitude: 77.6245,
+        latitude: donorLatitude,
+        longitude: donorLongitude,
+        donorOrganization: donorVenue,
       });
+
+      if (created) {
+        // Optimistically prepend to the active donations feed so it's instantly #1!
+        setDonations((prev) => [created, ...prev.filter((d) => d.id !== created.id)]);
+        setStatusFilter('ALL');
+      }
 
       // Clear form
       setTitle('');
       setDescription('');
-      fetchDonations();
-      setMatchingStatus('Surplus food posted successfully and queued in priority Min-Heap!');
-      setTimeout(() => setMatchingStatus(null), 5000);
+      await fetchDonations();
+      setMatchingStatus(`⚡ Surplus food "${created?.title || title}" posted and inserted into the expiry min-heap (most urgent batch is always shown first).`);
+      setTimeout(() => setMatchingStatus(null), 6000);
     } catch (err: any) {
       alert(err.message || 'Failed to post donation');
     } finally {
@@ -93,9 +198,16 @@ export const DonorDashboard: React.FC = () => {
     setMatchingStatus(null);
     try {
       const res = await api.matchDonation(donationId);
-      setMatchingStatus(
-        `Successfully matched ${res.allocatedKg} kg across ${res.matchedNgos?.length || 1} NGOs using Greedy Heuristic!`
-      );
+      const topReason = res.allocations?.[0]?.explanationReason || res.matchedNgos?.[0]?.reason;
+      if (topReason) {
+        setMatchingStatus(
+          `Fairness Allocation Successful! [Allocated: ${res.allocatedKg} kg] -> ${topReason}`
+        );
+      } else {
+        setMatchingStatus(
+          `Successfully matched ${res.allocatedKg} kg across ${res.matchedNgos?.length || 1} NGOs using Max-Min Fairness Allocator!`
+        );
+      }
       fetchDonations();
     } catch (err: any) {
       setMatchingStatus(`Matching result: ${err.message}`);
@@ -120,14 +232,24 @@ export const DonorDashboard: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={fetchDonations}
-          disabled={loading}
-          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition shadow-sm"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          Refresh Status
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowForecastModal(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-50 border border-blue-200 text-xs font-bold text-blue-800 hover:bg-blue-100 transition shadow-sm"
+          >
+            <TrendingUp className="w-3.5 h-3.5 text-blue-600" />
+            <span>Demand & Surplus Forecast</span>
+          </button>
+
+          <button
+            onClick={fetchDonations}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition shadow-sm"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            Refresh Status
+          </button>
+        </div>
       </div>
 
       {/* Alert Banner if present */}
@@ -152,16 +274,59 @@ export const DonorDashboard: React.FC = () => {
           </div>
 
           <form onSubmit={handlePostDonation} className="space-y-4 text-xs">
+            {/* Donor Venue & Location Selector */}
+            <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-bold text-emerald-950 flex items-center gap-1.5">
+                  <Building className="w-3.5 h-3.5 text-emerald-700" />
+                  Select Donor Kitchen & Venue
+                </label>
+                <span className="text-[10px] text-emerald-700 font-semibold">Different Venues & Places</span>
+              </div>
+              <select
+                value={donorVenue}
+                onChange={(e) => handleVenueChange(e.target.value)}
+                className="w-full px-2.5 py-2 rounded-lg border border-emerald-300 bg-white text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                {VENUE_PRESETS.map((vp) => (
+                  <option key={vp.name} value={vp.name}>
+                    {vp.name} — ({vp.address.split(',')[1]?.trim() || vp.address})
+                  </option>
+                ))}
+              </select>
+              <div className="flex items-center gap-1.5 text-[11px] text-slate-600">
+                <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span className="truncate">{addressLine}</span>
+              </div>
+            </div>
+
             <div>
               <label className="block font-semibold text-slate-700 mb-1">Dish / Item Name *</label>
               <input
                 type="text"
                 required
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setTitle(value);
+                  // Prefix search on the backend Trie (only after 2 letters, to keep it meaningful)
+                  if (value.trim().length >= 2) {
+                    api.getFoodSuggestions(value).then(setDishSuggestions).catch(() => setDishSuggestions([]));
+                  } else {
+                    setDishSuggestions([]);
+                  }
+                }}
+                list="dish-suggestions"
+                autoComplete="off"
                 placeholder="e.g. Basmati Veg Biryani with Paneer Curry"
                 className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
               />
+              <datalist id="dish-suggestions">
+                {dishSuggestions.map((name) => (
+                  <option key={name} value={name} />
+                ))}
+              </datalist>
+              <p className="mt-1 text-[11px] text-slate-500">Suggestions come from a Trie (prefix tree) on the server.</p>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -285,34 +450,76 @@ export const DonorDashboard: React.FC = () => {
 
         {/* Right Column: Active Surplus Batches (7 cols) */}
         <div className="lg:col-span-7 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-              <Clock className="w-4 h-4 text-amber-600" />
-              Active Donations (Min-Heap Expiry Prioritized)
-            </h2>
-            <span className="text-xs text-slate-500 font-medium">
-              {donations.length} total batches registered
-            </span>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h2 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                <Clock className="w-4 h-4 text-amber-600" />
+                Active Donations (Min-Heap Expiry Prioritized)
+              </h2>
+              <span className="text-xs text-slate-500 font-medium">
+                {donations.length} total batches registered
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              {(['ALL', 'AVAILABLE', 'RESERVED'] as const).map((mode) => {
+                const count =
+                  mode === 'ALL'
+                    ? donations.length
+                    : mode === 'AVAILABLE'
+                    ? donations.filter((d) => d.status === 'AVAILABLE').length
+                    : donations.filter((d) => d.status !== 'AVAILABLE').length;
+
+                return (
+                  <button
+                    key={mode}
+                    onClick={() => setStatusFilter(mode)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
+                      statusFilter === mode
+                        ? 'bg-emerald-700 text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    {mode === 'ALL' ? 'All' : mode === 'AVAILABLE' ? 'Available' : 'Reserved / Claimed'} ({count})
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <div className="space-y-3">
-            {donations.length === 0 ? (
-              <div className="p-8 text-center bg-white rounded-2xl border border-slate-200 text-slate-500 text-xs">
-                No active food donations found. Post a new batch using the form on the left.
-              </div>
-            ) : (
-              donations.map((d) => {
+            {(() => {
+              const displayedDonations = donations.filter((d) => {
+                if (statusFilter === 'AVAILABLE') return d.status === 'AVAILABLE';
+                if (statusFilter === 'RESERVED') return d.status !== 'AVAILABLE';
+                return true;
+              });
+
+              if (displayedDonations.length === 0) {
+                return (
+                  <div className="p-8 text-center bg-white rounded-2xl border border-slate-200 text-slate-500 text-xs">
+                    No {statusFilter.toLowerCase()} food donations found. Post a new batch using the form on the left.
+                  </div>
+                );
+              }
+
+              return displayedDonations.map((d) => {
                 const urgencyColor =
                   d.urgency === 'CRITICAL'
                     ? 'bg-red-50 text-red-700 border-red-200'
                     : d.urgency === 'HIGH'
                     ? 'bg-orange-50 text-orange-700 border-orange-200'
                     : 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                const isAvailable = d.status === 'AVAILABLE';
 
                 return (
                   <div
                     key={d.id}
-                    className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:border-emerald-300 transition space-y-3"
+                    className={`rounded-2xl p-5 border transition space-y-3 ${
+                      isAvailable
+                        ? 'bg-white border-emerald-400 shadow-sm hover:border-emerald-500 ring-1 ring-emerald-200'
+                        : 'bg-slate-50/60 border-slate-200 shadow-xs'
+                    }`}
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <div>
@@ -321,9 +528,18 @@ export const DonorDashboard: React.FC = () => {
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${urgencyColor}`}>
                             {d.urgency}
                           </span>
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                              isAvailable
+                                ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                : 'bg-slate-100 text-slate-600 border-slate-200'
+                            }`}
+                          >
+                            {d.status}
+                          </span>
                         </div>
                         <p className="text-xs text-slate-500 mt-0.5">
-                          {d.categoryName} • {d.dietaryType} • {d.donorOrganization || 'Koramangala Kitchen'}
+                          {d.categoryName} • {d.dietaryType} • <strong className="text-slate-700">{d.donorOrganization || 'Koramangala Kitchen'}</strong>
                         </p>
                       </div>
 
@@ -357,11 +573,8 @@ export const DonorDashboard: React.FC = () => {
                       </div>
                     </div>
 
-                    {d.status === 'AVAILABLE' && (
-                      <div className="pt-2 flex items-center justify-between">
-                        <span className="text-[11px] text-slate-500">
-                          Awaiting distribution assignment
-                        </span>
+                    <div className="pt-2 flex items-center justify-end border-t border-slate-100 mt-2">
+                      {d.status === 'AVAILABLE' && (
                         <button
                           onClick={() => handleTriggerMatch(d.id)}
                           disabled={matchingId === d.id}
@@ -370,15 +583,21 @@ export const DonorDashboard: React.FC = () => {
                           <Zap className="w-3.5 h-3.5 text-amber-300" />
                           {matchingId === d.id ? 'Running Greedy Matcher...' : 'Run Greedy Match'}
                         </button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 );
-              })
-            )}
+              });
+            })()}
           </div>
         </div>
       </div>
+
+      {/* Modals */}
+      <SurplusForecastModal
+        isOpen={showForecastModal}
+        onClose={() => setShowForecastModal(false)}
+      />
     </div>
   );
 };

@@ -50,20 +50,30 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers(
-                    "/api/**",
-                    "/h2-console/**",
-                    "/ws/**",
-                    "/v3/api-docs/**",
-                    "/swagger-ui/**",
-                    "/error"
-                ).permitAll()
+                // Role-based access control: each portal's API needs a JWT with the matching role.
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/donor/**").hasRole("DONOR")
+                .requestMatchers("/api/ngo/**").hasRole("NGO")
+                .requestMatchers("/api/volunteer/**").hasRole("VOLUNTEER")
+                // Public read-only endpoints, auth, the DSA lab and the single-page app itself.
                 .anyRequest().permitAll()
+            )
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((req, res, e) -> writeJsonError(res, 401, "Please log in to use this feature."))
+                .accessDeniedHandler((req, res, e) -> writeJsonError(res, 403, "Your role is not allowed to use this feature."))
             );
 
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    /** Same {success, message} shape as ApiResponse, so the frontend can show the message. */
+    private static void writeJsonError(jakarta.servlet.http.HttpServletResponse res, int status, String message)
+            throws java.io.IOException {
+        res.setStatus(status);
+        res.setContentType("application/json");
+        res.getWriter().write("{\"success\":false,\"message\":\"" + message + "\",\"data\":null}");
     }
 
     @Bean

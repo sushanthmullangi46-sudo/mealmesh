@@ -52,13 +52,19 @@ public class DataInitializer implements CommandLineRunner {
     @Transactional
     public void run(String... args) {
         String encodedPassword = passwordEncoder.encode("demo123");
-        ensureAdditionalVolunteers(encodedPassword);
-        ensureFreshSurplusDonations();
 
-        if (userRepository.count() > 8) {
-            return; // Already initialized
+        // Core data (admin, food categories, first donors/NGOs) must exist before the
+        // top-up seeders run, because they reference categories and donor profiles.
+        if (!userRepository.existsByEmail("admin@mealmesh.org")) {
+            seedCoreData(encodedPassword);
         }
+        ensureAllFoodCategories();
+        ensureAdditionalVolunteers(encodedPassword);
+        ensureDiverseDonorsAndDonations(encodedPassword);
+        ensureFreshSurplusDonations();
+    }
 
+    private void seedCoreData(String encodedPassword) {
         // 1. Admin
         User admin = new User(null, "admin@mealmesh.org", encodedPassword, "System Administrator", "+91 80 4000 0001", "ADMIN");
         admin.setVerified(true);
@@ -199,20 +205,110 @@ public class DataInitializer implements CommandLineRunner {
         delivery1.setPickupLongitude(locDonor1.getLongitude());
         delivery1.setDropoffLatitude(locNgo1.getLatitude());
         delivery1.setDropoffLongitude(locNgo1.getLongitude());
-        delivery1.setEstimatedDistanceKm(4.8);
-        delivery1.setEstimatedTimeMinutes(14.0);
+        double km1 = Math.round(haversineKm(locDonor1.getLatitude(), locDonor1.getLongitude(), locNgo1.getLatitude(), locNgo1.getLongitude()) * 10.0) / 10.0;
+        delivery1.setEstimatedDistanceKm(km1);
+        delivery1.setEstimatedTimeMinutes(Math.max(5, Math.round(km1 * 3.2)));
         delivery1.setStartTime(LocalDateTime.now());
         deliveryRepository.save(delivery1);
 
         // 10. Completed Beneficiary Distributions for analytics
-        BeneficiaryDistribution dist = new BeneficiaryDistribution();
-        dist.setNgo(ngoProf1);
-        dist.setDonation(don3);
-        dist.setBeneficiaryGroup("Children Shelter & Slum Community");
-        dist.setPeopleFedCount(1250);
-        dist.setQuantityDistributedKg(520.0);
-        dist.setDistributedAt(LocalDateTime.now().minusDays(1));
-        distributionRepository.save(dist);
+        // 11. One week of completed rescues so the analytics charts start with real history
+        String[][] history = {
+            {"Veg Pulao & Raita (lunch buffet)", "32"}, {"Chapathi & Mixed Veg Kurma", "24"},
+            {"Lemon Rice & Curd Rice", "28"}, {"Bakery Buns & Sandwich Bread", "15"},
+            {"Bisi Bele Bath", "36"}, {"Idli, Vada & Sambar", "20"},
+            {"Paneer Fried Rice", "30"}, {"Dal Khichdi", "26"},
+            {"Ragi Mudde & Saaru", "22"}, {"Wedding Banquet Veg Meals", "48"},
+            {"Curd Rice & Pickle", "18"}, {"Vegetable Biryani", "40"}
+        };
+        NgoProfile[] ngos = {ngoProf1, ngoProf2};
+        Location[] ngoLocs = {locNgo1, locNgo2};
+        DonorProfile[] donors = {donorProf1, donorProf2};
+        Location[] donorLocs = {locDonor1, locDonor2};
+        for (int i = 0; i < history.length; i++) {
+            int daysAgo = 6 - (i / 2);           // two rescues per day, 6 days ago .. 1 day ago
+            LocalDateTime posted = LocalDateTime.now().minusDays(daysAgo).withHour(12 + (i % 2) * 6).withMinute(15);
+            double kg = Double.parseDouble(history[i][1]);
+            Location from = donorLocs[i % 2];
+            Location to = ngoLocs[(i / 2) % 2];
+
+            Donation d = new Donation();
+            d.setDonor(donors[i % 2]);
+            d.setCategory(history[i][0].startsWith("Bakery") ? catBakery : catCooked);
+            d.setLocation(from);
+            d.setTitle(history[i][0]);
+            d.setDescription("Completed rescue (demo history).");
+            d.setFoodType("COOKED");
+            d.setDietaryType("VEG");
+            d.setQuantityKg(kg);
+            d.setServings((int) Math.round(kg * 2.5));
+            d.setCookedTime(posted.minusHours(1));
+            d.setExpiryTime(posted.plusHours(4));
+            d.setUrgency("HIGH");
+            d.setStatus("DELIVERED");
+            d.setStorageTemperatureCelsius(64.0);
+            d.setAllergenInfo("None");
+            d.setCreatedAt(posted);
+            d = donationRepository.save(d);
+
+            Allocation a = new Allocation();
+            a.setDonation(d);
+            a.setNgo(ngos[(i / 2) % 2]);
+            a.setAllocatedQuantityKg(kg);
+            a.setStatus("ACCEPTED");
+            a.setMatchScore(82.0 + (i % 5) * 3);
+            a.setMatchedAt(posted.plusMinutes(10));
+            a = allocationRepository.save(a);
+
+            double km = Math.round(haversineKm(from.getLatitude(), from.getLongitude(), to.getLatitude(), to.getLongitude()) * 10.0) / 10.0;
+            Delivery del = new Delivery();
+            del.setAllocation(a);
+            del.setVolunteer(volProf1);
+            del.setStatus("DELIVERED");
+            del.setPickupLatitude(from.getLatitude());
+            del.setPickupLongitude(from.getLongitude());
+            del.setDropoffLatitude(to.getLatitude());
+            del.setDropoffLongitude(to.getLongitude());
+            del.setEstimatedDistanceKm(km);
+            del.setEstimatedTimeMinutes(Math.max(5, Math.round(km * 3.2)));
+            del.setStartTime(posted.plusMinutes(15));
+            del.setPickupTime(posted.plusMinutes(30));
+            del.setCompletionTime(posted.plusMinutes(30 + Math.round(km * 3.2)));
+            deliveryRepository.save(del);
+
+            BeneficiaryDistribution dist = new BeneficiaryDistribution();
+            dist.setNgo(ngos[(i / 2) % 2]);
+            dist.setDonation(d);
+            dist.setBeneficiaryGroup(i % 2 == 0 ? "Children's shelter" : "Community kitchen");
+            dist.setPeopleFedCount((int) Math.round(kg * 2.5));
+            dist.setQuantityDistributedKg(kg);
+            dist.setDistributedAt(del.getCompletionTime());
+            distributionRepository.save(dist);
+        }
+    }
+
+    /** Great-circle distance in km (same formula as GreedyAllocator.haversineDistance). */
+    private static double haversineKm(double lat1, double lon1, double lat2, double lon2) {
+        double r = 6371.0, dLat = Math.toRadians(lat2 - lat1), dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        return 2 * r * Math.asin(Math.sqrt(a));
+    }
+
+    /** Every category offered in the donor form must exist, otherwise the donation is filed under a wrong category. */
+    private void ensureAllFoodCategories() {
+        String[][] categories = {
+            {"Cooked Meals", "Cooked meals, rice, curries", "4", "HIGH"},
+            {"Bakery Items", "Breads, buns, dry baked goods", "12", "MEDIUM"},
+            {"Raw Groceries", "Uncooked vegetables and staples", "24", "LOW"},
+            {"Dairy Products", "Milk, curd, paneer and other chilled dairy", "8", "HIGH"},
+            {"Packaged Goods", "Sealed packaged and ready-to-eat items", "48", "LOW"}
+        };
+        for (String[] c : categories) {
+            if (foodCategoryRepository.findByNameIgnoreCase(c[0]).isEmpty()) {
+                foodCategoryRepository.save(new FoodCategory(null, c[0], c[1], Integer.parseInt(c[2]), c[3]));
+            }
+        }
     }
 
     private void ensureAdditionalVolunteers(String encodedPassword) {
@@ -405,5 +501,175 @@ public class DataInitializer implements CommandLineRunner {
         d6.setAllergenInfo("Contains Dairy");
         d6.setPickupInstructions("Collect from main kitchen dispatch counter");
         donationRepository.save(d6);
+    }
+
+    private void ensureDiverseDonorsAndDonations(String encodedPassword) {
+        // 1. The Leela Palace Banquet (Indiranagar / Old Airport Rd)
+        User uLeela = userRepository.findByEmail("donor.leelapalace@mealmesh.org").orElseGet(() -> {
+            User u = new User(null, "donor.leelapalace@mealmesh.org", encodedPassword, "Chef Rajesh Varma", "+91 98450 77001", "DONOR");
+            u.setVerified(true);
+            return userRepository.save(u);
+        });
+        Location locLeela = locationRepository.findAll().stream()
+                .filter(l -> "The Leela Palace Banquet".equalsIgnoreCase(l.getName()))
+                .findFirst().orElseGet(() -> {
+                    Location l = new Location(null, uLeela, "The Leela Palace Banquet", "Old Airport Rd, Kodihalli, Indiranagar", "Bengaluru", "560008", 12.9606, 77.6484);
+                    return locationRepository.save(l);
+                });
+        DonorProfile dpLeela = donorProfileRepository.findAll().stream()
+                .filter(dp -> "The Leela Palace Banquet".equalsIgnoreCase(dp.getOrganizationName()))
+                .findFirst().orElseGet(() -> {
+                    DonorProfile dp = new DonorProfile(null, uLeela, "The Leela Palace Banquet", "HOTEL", "FSSAI-112233440055", "Chef Rajesh Varma", 4.95);
+                    return donorProfileRepository.save(dp);
+                });
+
+        // 2. Infosys Corporate Dining Commissary (Electronic City)
+        User uInfosys = userRepository.findByEmail("donor.infosys@mealmesh.org").orElseGet(() -> {
+            User u = new User(null, "donor.infosys@mealmesh.org", encodedPassword, "Vikram Kulkarni", "+91 98450 77002", "DONOR");
+            u.setVerified(true);
+            return userRepository.save(u);
+        });
+        Location locInfosys = locationRepository.findAll().stream()
+                .filter(l -> "Infosys Dining Commissary".equalsIgnoreCase(l.getName()))
+                .findFirst().orElseGet(() -> {
+                    Location l = new Location(null, uInfosys, "Infosys Dining Commissary", "Hosur Rd, Electronic City Phase 1", "Bengaluru", "560100", 12.8399, 77.6770);
+                    return locationRepository.save(l);
+                });
+        DonorProfile dpInfosys = donorProfileRepository.findAll().stream()
+                .filter(dp -> "Infosys Corporate Dining".equalsIgnoreCase(dp.getOrganizationName()))
+                .findFirst().orElseGet(() -> {
+                    DonorProfile dp = new DonorProfile(null, uInfosys, "Infosys Corporate Dining", "CORPORATE_CANTEEN", "FSSAI-112233440066", "Vikram Kulkarni", 4.88);
+                    return donorProfileRepository.save(dp);
+                });
+
+        // 3. Taj West End Convention Centre (Race Course Rd, High Grounds)
+        User uTaj = userRepository.findByEmail("donor.tajwestend@mealmesh.org").orElseGet(() -> {
+            User u = new User(null, "donor.tajwestend@mealmesh.org", encodedPassword, "Chef Manjunath Iyer", "+91 98450 77003", "DONOR");
+            u.setVerified(true);
+            return userRepository.save(u);
+        });
+        Location locTaj = locationRepository.findAll().stream()
+                .filter(l -> "Taj West End Convention Centre".equalsIgnoreCase(l.getName()))
+                .findFirst().orElseGet(() -> {
+                    Location l = new Location(null, uTaj, "Taj West End Convention Centre", "Race Course Rd, High Grounds", "Bengaluru", "560001", 12.9866, 77.5855);
+                    return locationRepository.save(l);
+                });
+        DonorProfile dpTaj = donorProfileRepository.findAll().stream()
+                .filter(dp -> "Taj West End Convention Centre".equalsIgnoreCase(dp.getOrganizationName()))
+                .findFirst().orElseGet(() -> {
+                    DonorProfile dp = new DonorProfile(null, uTaj, "Taj West End Convention Centre", "HOTEL", "FSSAI-112233440077", "Chef Manjunath Iyer", 4.92);
+                    return donorProfileRepository.save(dp);
+                });
+
+        // 4. Sheraton Grand Bengaluru (Rajajinagar)
+        User uSheraton = userRepository.findByEmail("donor.sheraton@mealmesh.org").orElseGet(() -> {
+            User u = new User(null, "donor.sheraton@mealmesh.org", encodedPassword, "Chef Aniruddh Roy", "+91 98450 77004", "DONOR");
+            u.setVerified(true);
+            return userRepository.save(u);
+        });
+        Location locSheraton = locationRepository.findAll().stream()
+                .filter(l -> "Sheraton Grand Banquet Hall".equalsIgnoreCase(l.getName()))
+                .findFirst().orElseGet(() -> {
+                    Location l = new Location(null, uSheraton, "Sheraton Grand Banquet Hall", "Dr. Rajkumar Rd, Rajajinagar", "Bengaluru", "560010", 13.0112, 77.5550);
+                    return locationRepository.save(l);
+                });
+        DonorProfile dpSheraton = donorProfileRepository.findAll().stream()
+                .filter(dp -> "Sheraton Grand Banquet Hall".equalsIgnoreCase(dp.getOrganizationName()))
+                .findFirst().orElseGet(() -> {
+                    DonorProfile dp = new DonorProfile(null, uSheraton, "Sheraton Grand Banquet Hall", "HOTEL", "FSSAI-112233440088", "Chef Aniruddh Roy", 4.87);
+                    return donorProfileRepository.save(dp);
+                });
+
+        FoodCategory catCooked = foodCategoryRepository.findByNameIgnoreCase("Cooked Meals")
+                .orElseGet(() -> foodCategoryRepository.findAll().stream().findFirst().orElse(null));
+
+        // Check if we need to insert active donations for them
+        boolean hasLeela = donationRepository.findAll().stream().anyMatch(d -> d.getTitle().contains("Royal Mughlai"));
+        if (!hasLeela) {
+            Donation d = new Donation();
+            d.setDonor(dpLeela);
+            d.setCategory(catCooked);
+            d.setLocation(locLeela);
+            d.setTitle("Royal Mughlai Vegetable Biryani & Paneer Gravy");
+            d.setDescription("Grand wedding banquet lunch surplus packed in hygienic warm insulated caterer containers.");
+            d.setFoodType("COOKED");
+            d.setDietaryType("VEG");
+            d.setQuantityKg(45.0);
+            d.setServings(110);
+            d.setCookedTime(LocalDateTime.now().minusHours(1));
+            d.setExpiryTime(LocalDateTime.now().plusHours(4));
+            d.setUrgency("HIGH");
+            d.setStatus("AVAILABLE");
+            d.setStorageTemperatureCelsius(66.0);
+            d.setAllergenInfo("Contains Dairy, Cashews");
+            d.setPickupInstructions("Collect from Banquet Service Ramp Gate 3, Old Airport Road");
+            donationRepository.save(d);
+        }
+
+        boolean hasInfosys = donationRepository.findAll().stream().anyMatch(d -> d.getTitle().contains("Continental"));
+        if (!hasInfosys) {
+            Donation d = new Donation();
+            d.setDonor(dpInfosys);
+            d.setCategory(catCooked);
+            d.setLocation(locInfosys);
+            d.setTitle("Executive Continental Baked Pasta & Garlic Sourdough");
+            d.setDescription("Corporate tech campus cafeteria lunch surplus, sealed in food-grade thermal containers.");
+            d.setFoodType("COOKED");
+            d.setDietaryType("VEG");
+            d.setQuantityKg(50.0);
+            d.setServings(125);
+            d.setCookedTime(LocalDateTime.now().minusHours(1));
+            d.setExpiryTime(LocalDateTime.now().plusHours(5));
+            d.setUrgency("HIGH");
+            d.setStatus("AVAILABLE");
+            d.setStorageTemperatureCelsius(63.0);
+            d.setAllergenInfo("Contains Dairy, Wheat/Gluten");
+            d.setPickupInstructions("Collect from Food Court 3 Loading Bay, Electronic City Phase 1");
+            donationRepository.save(d);
+        }
+
+        boolean hasTaj = donationRepository.findAll().stream().anyMatch(d -> d.getTitle().contains("Mysore Royal"));
+        if (!hasTaj) {
+            Donation d = new Donation();
+            d.setDonor(dpTaj);
+            d.setCategory(catCooked);
+            d.setLocation(locTaj);
+            d.setTitle("Mysore Royal Feast Pulao & Kesar Badam Halwa");
+            d.setDescription("Convention centre gala surplus, wholesome festive feast prepared with pure ghee.");
+            d.setFoodType("COOKED");
+            d.setDietaryType("VEG");
+            d.setQuantityKg(40.0);
+            d.setServings(100);
+            d.setCookedTime(LocalDateTime.now().minusHours(1));
+            d.setExpiryTime(LocalDateTime.now().plusHours(3));
+            d.setUrgency("CRITICAL");
+            d.setStatus("AVAILABLE");
+            d.setStorageTemperatureCelsius(65.0);
+            d.setAllergenInfo("Contains Almonds, Dairy");
+            d.setPickupInstructions("Collect from Main Ballroom Kitchen Loading Bay, Race Course Rd");
+            donationRepository.save(d);
+        }
+
+        boolean hasSheraton = donationRepository.findAll().stream().anyMatch(d -> d.getTitle().contains("Steamed Rice & Avial"));
+        if (!hasSheraton) {
+            Donation d = new Donation();
+            d.setDonor(dpSheraton);
+            d.setCategory(catCooked);
+            d.setLocation(locSheraton);
+            d.setTitle("South Indian Sambar, Steamed Rice & Avial");
+            d.setDescription("Traditional South Indian meal prepared for medical conference luncheon.");
+            d.setFoodType("COOKED");
+            d.setDietaryType("VEG");
+            d.setQuantityKg(35.0);
+            d.setServings(90);
+            d.setCookedTime(LocalDateTime.now().minusHours(1));
+            d.setExpiryTime(LocalDateTime.now().plusHours(4));
+            d.setUrgency("HIGH");
+            d.setStatus("AVAILABLE");
+            d.setStorageTemperatureCelsius(67.0);
+            d.setAllergenInfo("None");
+            d.setPickupInstructions("Collect from Gate 2 Service Entrance, Rajajinagar");
+            donationRepository.save(d);
+        }
     }
 }

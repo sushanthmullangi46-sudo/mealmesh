@@ -11,6 +11,7 @@ public class AllocationResponseDto {
     private double matchScore;
     private String status;
     private LocalDateTime matchedAt;
+    private String fairnessExplanation;
     private DeliveryResponseDto.DonationSummaryDto donation;
     private DeliveryResponseDto.NgoSummaryDto ngo;
 
@@ -24,6 +25,7 @@ public class AllocationResponseDto {
         dto.setMatchScore(a.getMatchScore());
         dto.setStatus(a.getStatus());
         dto.setMatchedAt(a.getMatchedAt());
+        dto.setFairnessExplanation(a.getFairnessExplanation());
 
         if (a.getDonation() != null) {
             dto.setDonation(DeliveryResponseDto.DonationSummaryDto.fromEntity(a.getDonation()));
@@ -44,6 +46,8 @@ public class AllocationResponseDto {
     public void setStatus(String status) { this.status = status; }
     public LocalDateTime getMatchedAt() { return matchedAt; }
     public void setMatchedAt(LocalDateTime matchedAt) { this.matchedAt = matchedAt; }
+    public String getFairnessExplanation() { return fairnessExplanation; }
+    public void setFairnessExplanation(String fairnessExplanation) { this.fairnessExplanation = fairnessExplanation; }
     public DeliveryResponseDto.DonationSummaryDto getDonation() { return donation; }
     public void setDonation(DeliveryResponseDto.DonationSummaryDto donation) { this.donation = donation; }
     public DeliveryResponseDto.NgoSummaryDto getNgo() { return ngo; }

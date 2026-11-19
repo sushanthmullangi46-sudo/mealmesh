@@ -165,7 +165,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onNavigate
       <div className="text-center max-w-2xl mx-auto space-y-2">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-200">
           <Database className="w-3.5 h-3.5 text-emerald-700" />
-          <span>Role-Based Database Authentication (DBMS 2.0)</span>
+          <span>Role-Based Access Control · JWT Sign-In</span>
         </div>
         <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
           Select Your Account Identity
@@ -189,7 +189,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onNavigate
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-emerald-600" />
             <h2 className="text-sm font-bold text-slate-900">
-              Preset DBMS Personas (1-Click Instant Sign In)
+              Demo Accounts (1-Click Sign In, password demo123)
             </h2>
           </div>
           <span className="text-[11px] text-slate-500 font-semibold">
@@ -251,7 +251,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onNavigate
 
                   <div className="pt-2 border-t border-slate-100 space-y-1">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                      DBMS Access
+                      Portal Access
                     </span>
                     <ul className="text-[11px] text-slate-600 space-y-0.5">
                       {p.features.map((f, i) => (

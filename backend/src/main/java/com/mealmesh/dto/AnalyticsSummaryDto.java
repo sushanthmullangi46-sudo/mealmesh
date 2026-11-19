@@ -15,8 +15,12 @@ public class AnalyticsSummaryDto {
     private long completedDeliveriesCount;
     private List<CategoryStatDto> rescuedByCategory;
     private List<DailyTrendDto> weeklyTrend;
+    private int deliveryZoneCount; // computed with DisjointSetUnion
 
     public AnalyticsSummaryDto() {}
+
+    public int getDeliveryZoneCount() { return deliveryZoneCount; }
+    public void setDeliveryZoneCount(int deliveryZoneCount) { this.deliveryZoneCount = deliveryZoneCount; }
 
     public double getTotalFoodRescuedKg() { return totalFoodRescuedKg; }
     public void setTotalFoodRescuedKg(double totalFoodRescuedKg) { this.totalFoodRescuedKg = totalFoodRescuedKg; }

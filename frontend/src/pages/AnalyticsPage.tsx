@@ -14,6 +14,7 @@ import {
   PieChart,
   Pie,
   Cell,
+  Legend,
 } from 'recharts';
 import {
   BarChart3,
@@ -82,9 +83,9 @@ export const AnalyticsPage: React.FC = () => {
               Total Food Rescued
             </span>
             <h3 className="text-2xl font-extrabold text-emerald-800 mt-1">
-              {stats?.totalFoodRescuedKg.toLocaleString() || '1,845'} kg
+              {stats ? stats.totalFoodRescuedKg.toLocaleString() : '—'} kg
             </h3>
-            <span className="text-[11px] text-slate-500">From 15+ donor kitchens</span>
+            <span className="text-[11px] text-slate-500">Claimed by NGOs from {stats?.activeDonorsCount ?? 0} donor accounts</span>
           </div>
           <div className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
             <Utensils className="w-6 h-6" />
@@ -97,9 +98,9 @@ export const AnalyticsPage: React.FC = () => {
               People Fed
             </span>
             <h3 className="text-2xl font-extrabold text-blue-700 mt-1">
-              {stats?.totalPeopleFed.toLocaleString() || '4,610'}
+              {stats ? stats.totalPeopleFed.toLocaleString() : '—'}
             </h3>
-            <span className="text-[11px] text-slate-500">Direct community portions</span>
+            <span className="text-[11px] text-slate-500">Recorded at hand-over by NGOs</span>
           </div>
           <div className="w-12 h-12 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center">
             <Users className="w-6 h-6" />
@@ -112,7 +113,7 @@ export const AnalyticsPage: React.FC = () => {
               CO2 Emissions Averted
             </span>
             <h3 className="text-2xl font-extrabold text-teal-700 mt-1">
-              {stats?.co2EmissionsSavedKg.toLocaleString() || '4,613'} kg
+              {stats ? stats.co2EmissionsSavedKg.toLocaleString() : '—'} kg
             </h3>
             <span className="text-[11px] text-slate-500">2.5kg CO2 per kg food</span>
           </div>
@@ -127,7 +128,7 @@ export const AnalyticsPage: React.FC = () => {
               Economic Value Rescued
             </span>
             <h3 className="text-2xl font-extrabold text-amber-700 mt-1">
-              ₹ {stats?.financialValueInr.toLocaleString() || '221,460'}
+              ₹ {stats ? stats.financialValueInr.toLocaleString('en-IN') : '—'}
             </h3>
             <span className="text-[11px] text-slate-500">Calculated at ₹120/kg</span>
           </div>
@@ -135,6 +136,22 @@ export const AnalyticsPage: React.FC = () => {
             <IndianRupee className="w-6 h-6" />
           </div>
         </div>
+      </div>
+
+      {/* Operations row: live counts from the database */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+        {[
+          { label: 'Deliveries Completed', value: stats?.completedDeliveriesCount, note: 'Missions handed over' },
+          { label: 'NGOs Registered', value: stats?.registeredNgosCount, note: 'Receiving shelters' },
+          { label: 'Volunteers', value: stats?.activeVolunteersCount, note: 'Transport fleet' },
+          { label: 'Delivery Zones', value: stats?.deliveryZoneCount, note: 'Disjoint Set Union, 3 km radius' },
+        ].map((tile) => (
+          <div key={tile.label} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">{tile.label}</span>
+            <h3 className="text-2xl font-extrabold text-slate-900 mt-1">{stats ? (tile.value ?? 0).toLocaleString() : '—'}</h3>
+            <span className="text-[11px] text-slate-500">{tile.note}</span>
+          </div>
+        ))}
       </div>
 
       {/* Charts Section: Weekly Trend Area Chart & Category Breakdown */}
@@ -146,7 +163,7 @@ export const AnalyticsPage: React.FC = () => {
               <TrendingUp className="w-4 h-4 text-emerald-600" />
               Weekly Redistribution Volume (kg)
             </h3>
-            <span className="text-[11px] text-slate-500 font-semibold">Bengaluru Urban</span>
+            <span className="text-[11px] text-slate-500 font-semibold">Last 7 days</span>
           </div>
 
           <div className="h-64">
@@ -201,8 +218,10 @@ export const AnalyticsPage: React.FC = () => {
                   nameKey="category"
                   cx="50%"
                   cy="50%"
+                  innerRadius={45}
                   outerRadius={80}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  paddingAngle={2}
+                  label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
                   labelLine={false}
                 >
                   {(stats?.rescuedByCategory || []).map((entry, index) => (
@@ -217,6 +236,7 @@ export const AnalyticsPage: React.FC = () => {
                     fontSize: '12px',
                   }}
                 />
+                <Legend verticalAlign="bottom" iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
               </PieChart>
             </ResponsiveContainer>
           </div>

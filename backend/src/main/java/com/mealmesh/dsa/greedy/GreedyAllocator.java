@@ -134,10 +134,12 @@ public class GreedyAllocator {
                 }
             }
 
-            double composite = (0.35 * proximityScore * urgencyMultiplier) +
+            // Each term is on a 0-100 scale and the weights sum to 1.0, so the score is always 0-100.
+            // Urgency boosts proximity (an urgent batch should go to the nearest shelter) but is capped at 100.
+            double composite = (0.35 * Math.min(100.0, proximityScore * urgencyMultiplier)) +
                                (0.35 * capacityScore) +
                                (0.15 * dietaryScore) +
-                               (0.15 * (100.0 / (1.0 + donation.getHoursRemainingUntilExpiry())));
+                               (0.15 * (100.0 / (1.0 + Math.max(0.0, donation.getHoursRemainingUntilExpiry()))));
 
             candidate.setCompositeScore(Math.round(composite * 100.0) / 100.0);
 
@@ -248,7 +250,7 @@ public class GreedyAllocator {
         return i + 1;
     }
 
-    private static double haversineDistance(double lat1, double lon1, double lat2, double lon2) {
+    public static double haversineDistance(double lat1, double lon1, double lat2, double lon2) {
         final double R = 6371.0;
         double dLat = Math.toRadians(lat2 - lat1);
         double dLon = Math.toRadians(lon2 - lon1);

@@ -1,49 +1,14 @@
+# Runs the same single container as the public deployment.
+# Usage: docker compose up --build   ->  http://localhost:8080
 services:
-  mealmesh-db:
-    image: postgres:16-alpine
-    container_name: mealmesh-postgres
+  mealmesh:
+    build: .
+    container_name: mealmesh
     restart: unless-stopped
-    environment:
-      POSTGRES_DB: mealmesh
-      POSTGRES_USER: mealmesh_user
-      POSTGRES_PASSWORD: mealmesh_secure_password_2026
-    ports:
-      - "5432:5432"
-    volumes:
-      - mealmesh_pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U mealmesh_user -d mealmesh"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  mealmesh-backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: mealmesh-backend
-    restart: unless-stopped
-    environment:
-      SPRING_PROFILES_ACTIVE: prod
-      SPRING_DATASOURCE_URL: jdbc:postgresql://mealmesh-db:5432/mealmesh
-      SPRING_DATASOURCE_USERNAME: mealmesh_user
-      SPRING_DATASOURCE_PASSWORD: mealmesh_secure_password_2026
     ports:
       - "8080:8080"
-    depends_on:
-      mealmesh-db:
-        condition: service_healthy
-
-  mealmesh-frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: mealmesh-frontend
-    restart: unless-stopped
-    ports:
-      - "3000:3000"
-    depends_on:
-      - mealmesh-backend
+    volumes:
+      - mealmesh_data:/app/data   # keeps the H2 database between restarts
 
 volumes:
-  mealmesh_pgdata:
+  mealmesh_data:

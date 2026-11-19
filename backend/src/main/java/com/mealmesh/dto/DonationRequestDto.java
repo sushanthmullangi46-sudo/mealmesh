@@ -11,6 +11,7 @@ public class DonationRequestDto {
     private double quantityKg;
     private int servings;
     private int hoursUntilExpiry = 4;
+    private Integer minutesUntilExpiry;
     private String urgency;      // "CRITICAL", "HIGH", "MEDIUM", "LOW"
     private Double storageTemperatureCelsius;
     private String allergenInfo;
@@ -18,6 +19,7 @@ public class DonationRequestDto {
     private Double latitude;
     private Double longitude;
     private String addressLine;
+    private String donorOrganization;
 
     public DonationRequestDto() {}
 
@@ -45,6 +47,9 @@ public class DonationRequestDto {
     public int getHoursUntilExpiry() { return hoursUntilExpiry; }
     public void setHoursUntilExpiry(int hoursUntilExpiry) { this.hoursUntilExpiry = hoursUntilExpiry; }
 
+    public Integer getMinutesUntilExpiry() { return minutesUntilExpiry; }
+    public void setMinutesUntilExpiry(Integer minutesUntilExpiry) { this.minutesUntilExpiry = minutesUntilExpiry; }
+
     public String getUrgency() { return urgency; }
     public void setUrgency(String urgency) { this.urgency = urgency; }
 
@@ -65,4 +70,7 @@ public class DonationRequestDto {
 
     public String getAddressLine() { return addressLine; }
     public void setAddressLine(String addressLine) { this.addressLine = addressLine; }
+
+    public String getDonorOrganization() { return donorOrganization; }
+    public void setDonorOrganization(String donorOrganization) { this.donorOrganization = donorOrganization; }
 }

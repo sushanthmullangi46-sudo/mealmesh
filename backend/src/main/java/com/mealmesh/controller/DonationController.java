@@ -22,9 +22,10 @@ public class DonationController {
     }
 
     private String resolveEmail(Authentication authentication) {
-        if (authentication == null) return "donor.koramangala@mealmesh.org";
+        if (authentication == null)
+            return "donor.koramangala@mealmesh.org";
         String name = authentication.getName();
-        if (name == null || !name.contains("@") || name.startsWith("com.mealmesh.")) {
+        if (name == null || !name.contains("@") || name.startsWith("com.mealmesh.") || "donor@mealmesh.org".equalsIgnoreCase(name)) {
             return "donor.koramangala@mealmesh.org";
         }
         return name.trim().toLowerCase();
@@ -54,6 +55,12 @@ public class DonationController {
     public ResponseEntity<ApiResponse<List<DonationResponseDto>>> getActiveDonations() {
         List<DonationResponseDto> list = donationService.getPrioritizedActiveDonations();
         return ResponseEntity.ok(ApiResponse.ok("Retrieved priority-sorted donations", list));
+    }
+
+    /** Trie-powered autocomplete for the donor form's dish-name field. */
+    @GetMapping("/public/food-suggestions")
+    public ResponseEntity<ApiResponse<List<String>>> suggestFoodNames(@RequestParam(defaultValue = "") String prefix) {
+        return ResponseEntity.ok(ApiResponse.ok(donationService.suggestFoodNames(prefix, 8)));
     }
 
     @GetMapping("/public/donations/recent")

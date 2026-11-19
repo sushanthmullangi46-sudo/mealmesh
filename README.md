@@ -31,6 +31,7 @@ Large quantities of wholesome, edible surplus food from commercial kitchens, hot
 3. **Dijkstra Road Optimization:** Computes fastest and shortest delivery paths across the urban road network for volunteer transport fleets.
 4. **Reversible Operation Stack:** Enables dispatchers and administrators to safely roll back allocations and verification decisions.
 5. **Interactive DSA Laboratory:** A 10-visualizer sandbox enabling live inspection, step-by-step playback, and debugging of all custom data structures.
+6. **IoT Food Safety Monitoring:** ESP32 telemetry ingestion for DHT22 temperature/humidity and MQ-series gas readings, configurable threshold alerts, and an admin sensor monitor.
 
 ---
 
@@ -41,7 +42,7 @@ Large quantities of wholesome, edible surplus food from commercial kitchens, hot
 | **Frontend** | React 18, TypeScript, Vite, Tailwind CSS, Framer Motion, Lucide Icons, Recharts, Leaflet / OpenStreetMap |
 | **Backend** | Java 21+ (Running JDK 25), Spring Boot 3.3.5, Spring Security, Spring Data JPA, Hibernate ORM, Flyway Migrations |
 | **Database** | PostgreSQL 16 (Production) & Persistent H2 file mode (`./data/mealmesh.mv.db`, Development) |
-| **DSA Engine** | 9 Custom Data Structures & Algorithms implemented completely from scratch (`com.mealmesh.dsa.*`) |
+| **DSA Engine** | 9 custom data structures built on our own arrays and nodes (`com.mealmesh.dsa.*`) |
 | **Testing** | JUnit 5, Mockito, Vitest, React Testing Library (100% Passing) |
 | **Containerization** | Docker, Docker Compose (Multi-stage builds) |
 
@@ -65,26 +66,39 @@ Standard Java collections (`PriorityQueue`, `HashMap`, `Stack`, `LinkedList`) we
 
 ## 🚀 Quick Start Guide
 
-### Prerequisites
-- Java 21 or later (`java -version`)
-- Node.js 18+ and npm (`node -v`, `npm -v`)
-- Maven (included or system)
+### Option A — One click (for evaluation, needs only Java 21+)
+1. Open the `run` folder.
+2. Double-click **`START-MEALMESH.bat`** (macOS/Linux: `./start-mealmesh.sh`).
+3. The browser opens **http://localhost:8080** after about 20 seconds. Keep the black window open while using the app.
 
-### 1. Start the Spring Boot Backend
-```powershell
-# In a terminal window:
+`run/MealMesh.jar` contains both the Spring Boot backend and the built React frontend. On the first start it creates `run/data/` with a fresh demo database (donors, NGOs, volunteers and one week of delivery history).
+
+### Option B — Developer mode (live reload)
+```bash
+# Terminal 1: backend on http://localhost:8080 (Maven is downloaded by the wrapper)
 cd backend
-& "C:\Users\mdpul\.vscode\extensions\oracle.oracle-java-27.0.0\nbcode\java\maven\bin\mvn.cmd" spring-boot:run
-```
-*Backend runs on `http://localhost:8080` with persistent local H2 database and auto-seeded Bengaluru data.*
+mvnw.cmd spring-boot:run        # macOS/Linux: ./mvnw spring-boot:run
 
-### 2. Start the React Frontend
-```powershell
-# In a second terminal window:
+# Terminal 2: frontend on http://localhost:3000 (calls are proxied to :8080)
 cd frontend
-npm.cmd run dev
+npm install
+npm run dev
 ```
-*Frontend runs on `http://localhost:3000` (or `http://localhost:5173`).*
+
+### Rebuilding `run/MealMesh.jar` after changes
+```bash
+cd frontend && npm run build
+# copy frontend/dist/* into backend/src/main/resources/static/
+cd ../backend && mvnw.cmd clean package
+copy target\mealmesh-backend-1.0.0.jar ..\run\MealMesh.jar
+```
+
+### Option C — Public link (free hosting on Render)
+1. Push this folder to a GitHub repository.
+2. On https://render.com: **New + → Blueprint**, pick the repository. `render.yaml` and the root `Dockerfile` build everything automatically.
+3. Render gives a public URL like `https://mealmesh-xxxx.onrender.com`. (Free instances sleep when idle; the first visit can take about a minute, and the demo database resets on each restart.)
+
+With Docker installed locally: `docker compose up --build` → http://localhost:8080.
 
 ---
 
@@ -103,13 +117,15 @@ The frontend includes 1-click demo switcher buttons in the navigation bar:
 
 ## 🧪 Verification & Test Suites
 
-```powershell
-# Run backend DSA unit tests (16 tests):
-& "C:\Users\mdpul\.vscode\extensions\oracle.oracle-java-27.0.0\nbcode\java\maven\bin\mvn.cmd" -f backend/pom.xml test
+```bash
+# Backend: 25 JUnit tests for the data structures
+cd backend && mvnw.cmd test
 
-# Run frontend test suite (4 tests):
-npm.cmd --prefix frontend test
+# Frontend: 4 Vitest tests + TypeScript type-check
+cd frontend && npm test && npx tsc --noEmit
 ```
+
+See **`VIVA_GUIDE.md`** for how the frontend, backend and data structures connect, a table of where each structure is used, and likely viva questions with answers.
 
 ---
 
@@ -154,6 +170,10 @@ npm.cmd --prefix frontend test
 ```
 
 ---
+
+## IoT Food Safety Setup
+
+See [docs/IOT_FOOD_SAFETY.md](docs/IOT_FOOD_SAFETY.md) for ESP32 wiring, telemetry API details, threshold configuration, and sensor calibration notes. The example firmware is in `firmware/mealmesh_food_safety/`.
 
 ## 📜 Compliance & Impact Standards
 

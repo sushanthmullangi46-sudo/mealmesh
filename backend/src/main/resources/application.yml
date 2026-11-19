@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: ${PORT:8080}
 
 spring:
   application:
@@ -33,6 +33,12 @@ spring:
     enabled: false # Handled via JPA update in dev, Flyway enabled in postgres profile
 
 mealmesh:
+  iot:
+    # Set MEALMESH_IOT_DEVICE_API_KEY on the server and ESP32; this development value is for local demos only.
+    device-api-key: ${MEALMESH_IOT_DEVICE_API_KEY:mealmesh-dev-device-key}
+    temperature-max-celsius: ${MEALMESH_IOT_TEMPERATURE_MAX_CELSIUS:8.0}
+    humidity-max-percent: ${MEALMESH_IOT_HUMIDITY_MAX_PERCENT:75.0}
+    gas-max-ppm: ${MEALMESH_IOT_GAS_MAX_PPM:300.0}
   jwt:
     secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
     expiration-ms: 86400000 # 24 hours

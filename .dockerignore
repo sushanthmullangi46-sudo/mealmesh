@@ -1,0 +1,9 @@
+**/node_modules
+frontend/dist
+backend/target
+backend/data
+run
+archive
+.git
+.pytest_cache
+**/__pycache__

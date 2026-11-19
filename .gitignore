@@ -75,3 +75,6 @@ desktop.ini
 *.swp
 *.swo
 
+
+# Built React app copied into the jar (the Dockerfile rebuilds it)
+backend/src/main/resources/static/

@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { Delivery, RouteResponse, RouteWaypoint, VolunteerProfile } from '../types/mealmesh';
 import { MealMeshMap } from '../maps/MealMeshMap';
-import { LiveDeliveryTracker } from '../maps/LiveDeliveryTracker';
+import { LiveDeliveryTracker, DisruptionType } from '../maps/LiveDeliveryTracker';
+import { DisruptionSimulatorModal } from '../components/DisruptionSimulatorModal';
+import { ThermalExposurePanel } from '../components/ThermalExposurePanel';
 import {
   Bike,
   Navigation,
@@ -18,6 +20,10 @@ import {
   Users,
   ShieldCheck,
   BatteryCharging,
+  AlertTriangle,
+  QrCode,
+  Thermometer,
+  X,
 } from 'lucide-react';
 
 const SEEDED_FLEET_VOLUNTEERS = [
@@ -39,6 +45,11 @@ export const VolunteerDashboard: React.FC = () => {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [mapMode, setMapMode] = useState<'live' | 'dijkstra'>('live');
   const [activeVolunteerIndex, setActiveVolunteerIndex] = useState<number>(0);
+  const [showDisruptionModal, setShowDisruptionModal] = useState<boolean>(false);
+  const [showThermalModal, setShowThermalModal] = useState<boolean>(false);
+  const [disruptionNotice, setDisruptionNotice] = useState<string | null>(null);
+  const [disruptionMode, setDisruptionMode] = useState<DisruptionType>(null);
+  const [qaDecisions, setQaDecisions] = useState<Record<string, 'APPROVED' | 'QUARANTINED' | 'DIVERTED'>>({});
 
   const currentVolunteer = SEEDED_FLEET_VOLUNTEERS[activeVolunteerIndex];
 
@@ -104,6 +115,51 @@ export const VolunteerDashboard: React.FC = () => {
     setTimeout(() => setStatusMessage(null), 6000);
   };
 
+  const handleThermalDecision = (decision: 'APPROVED' | 'QUARANTINED' | 'DIVERTED', donId?: string) => {
+    const targetKey = donId || selectedDelivery?.allocation?.donation?.id || 'sample';
+    setQaDecisions((prev) => ({ ...prev, [targetKey]: decision }));
+
+    if (decision === 'APPROVED') {
+      setStatusMessage('✔ Consignment QA Approved: Thermal holding criteria compliant. Batch validated in delivery queue.');
+      setTimeout(() => setStatusMessage(null), 6000);
+      fetchDeliveries();
+    } else {
+      const actionText = decision === 'QUARANTINED' ? 'Quarantined for Lab Testing' : 'Diverted to Bio-Compost';
+      setStatusMessage(`⛔ Consignment ${actionText}: Fails thermal holding safety standards. Removed from active delivery missions!`);
+      setTimeout(() => setStatusMessage(null), 7000);
+
+      // Immediately remove from current delivery missions list
+      setDeliveries((prev) => {
+        const remaining = prev.filter((del) => {
+          const dId = del.allocation?.donation?.id || 'sample';
+          return dId !== targetKey && (!donId || del.allocation?.donation?.id !== donId);
+        });
+        if (selectedDelivery && (selectedDelivery.allocation?.donation?.id === targetKey || targetKey === 'sample')) {
+          setSelectedDelivery(remaining.length > 0 ? remaining[0] : null);
+          if (remaining.length > 0) {
+            calculateRouteForDelivery(remaining[0]);
+          }
+        }
+        return remaining;
+      });
+
+      // Auto close modal after 1.2s so user sees feedback
+      setTimeout(() => {
+        setShowThermalModal(false);
+      }, 1200);
+    }
+  };
+
+  // Filter deliveries based on thermal QA decisions: only approved or un-flagged consignments show
+  const visibleDeliveries = deliveries.filter((del) => {
+    const dId = del.allocation?.donation?.id || 'sample';
+    const status = qaDecisions[dId];
+    if (status === 'QUARANTINED' || status === 'DIVERTED') {
+      return false;
+    }
+    return true;
+  });
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* Header */}
@@ -122,7 +178,23 @@ export const VolunteerDashboard: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setShowDisruptionModal(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-50 border border-amber-200 text-xs font-bold text-amber-800 hover:bg-amber-100 transition shadow-sm"
+          >
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+            <span>Simulate Disruption</span>
+          </button>
+
+          <button
+            onClick={() => setShowThermalModal(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-50 border border-rose-200 text-xs font-bold text-rose-800 hover:bg-rose-100 transition shadow-sm"
+          >
+            <Thermometer className="w-3.5 h-3.5 text-rose-600" />
+            <span>Thermal Safety</span>
+          </button>
+
           <button
             onClick={fetchDeliveries}
             disabled={loading}
@@ -187,7 +259,7 @@ export const VolunteerDashboard: React.FC = () => {
           <div className="flex items-center justify-between">
             <h2 className="font-bold text-slate-900 text-sm flex items-center gap-2">
               <PackageCheck className="w-4 h-4 text-amber-600" />
-              Assigned Missions ({deliveries.length})
+              Assigned Missions ({visibleDeliveries.length})
             </h2>
             <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
               {currentVolunteer.vehicle} • {currentVolunteer.reg}
@@ -195,21 +267,32 @@ export const VolunteerDashboard: React.FC = () => {
           </div>
 
           <div className="space-y-3">
-            {deliveries.length === 0 ? (
+            {visibleDeliveries.length === 0 ? (
               <div className="bg-white p-8 rounded-2xl border border-slate-200 text-center space-y-3">
                 <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-700 flex items-center justify-center mx-auto">
-                  <Bike className="w-6 h-6" />
+                  <AlertTriangle className="w-6 h-6" />
                 </div>
                 <h3 className="font-bold text-sm text-slate-800">
-                  Ready for Dispatch
+                  No Approved Consignments in Dispatch Queue
                 </h3>
                 <p className="text-xs text-slate-500 max-w-xs mx-auto">
-                  Demonstration consignment active on live telemetry. When an NGO claims a surplus batch, new missions populate here automatically.
+                  Consignments that were quarantined or diverted due to thermal exposure risk are hidden from dispatch. Only QA-approved batches appear here for delivery.
                 </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQaDecisions({});
+                    fetchDeliveries();
+                  }}
+                  className="px-3 py-1.5 bg-slate-900 text-white rounded-xl text-xs font-semibold hover:bg-slate-800 transition"
+                >
+                  Reset Safety Audit Filters
+                </button>
               </div>
             ) : (
-              deliveries.map((del) => {
+              visibleDeliveries.map((del) => {
                 const isSelected = selectedDelivery?.id === del.id;
+                const isApproved = qaDecisions[del.allocation?.donation?.id || 'sample'] === 'APPROVED';
                 const statusColor =
                   del.status === 'DELIVERED'
                     ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
@@ -234,11 +317,19 @@ export const VolunteerDashboard: React.FC = () => {
                             {del.allocation?.donation?.title || 'Surplus Food Rescue Mission'}
                           </h3>
                         </div>
-                        <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded border inline-block mt-1 ${statusColor}`}
-                        >
-                          {del.status}
-                        </span>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded border inline-block ${statusColor}`}
+                          >
+                            {del.status}
+                          </span>
+                          {isApproved && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 inline-flex items-center gap-1">
+                              <CheckCircle className="w-3 h-3 text-emerald-600" />
+                              Thermal QA Approved
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       <div className="text-right">
@@ -378,6 +469,9 @@ export const VolunteerDashboard: React.FC = () => {
               deliveryId={selectedDelivery?.id}
               onDelivered={handleAutoReached}
               height="540px"
+              disruptionMode={disruptionMode}
+              disruptionNotice={disruptionNotice}
+              onDisruptionChange={setDisruptionMode}
             />
           ) : (
             <div className="space-y-4">
@@ -415,6 +509,38 @@ export const VolunteerDashboard: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Modals */}
+      <DisruptionSimulatorModal
+        isOpen={showDisruptionModal}
+        onClose={() => setShowDisruptionModal(false)}
+        deliveryId={selectedDelivery?.id}
+        onReplanSuccess={(res) => {
+          setDisruptionNotice(res.executionSummary);
+          setDisruptionMode(res.disruptionType || 'ROAD_BLOCKED');
+          setStatusMessage(`⚠️ Dynamic Re-Routing: ${res.executionSummary}`);
+          setTimeout(() => setStatusMessage(null), 7000);
+        }}
+      />
+
+      {showThermalModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="relative w-full max-w-xl">
+            <button
+              onClick={() => setShowThermalModal(false)}
+              className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center shadow-lg hover:bg-slate-800 z-10"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <ThermalExposurePanel
+              donationId={selectedDelivery?.allocation?.donation?.id || 'don-current'}
+              foodTitle={selectedDelivery?.allocation?.donation?.title || 'Active Consignment'}
+              onClose={() => setShowThermalModal(false)}
+              onDecision={handleThermalDecision}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

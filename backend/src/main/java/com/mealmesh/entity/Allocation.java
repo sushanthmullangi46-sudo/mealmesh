@@ -34,6 +34,9 @@ public class Allocation {
     @Column(name = "matched_at")
     private LocalDateTime matchedAt = LocalDateTime.now();
 
+    @Column(name = "fairness_explanation", columnDefinition = "TEXT")
+    private String fairnessExplanation;
+
     public Allocation() {}
 
     public UUID getId() { return id; }
@@ -56,4 +59,7 @@ public class Allocation {
 
     public LocalDateTime getMatchedAt() { return matchedAt; }
     public void setMatchedAt(LocalDateTime matchedAt) { this.matchedAt = matchedAt; }
+
+    public String getFairnessExplanation() { return fairnessExplanation; }
+    public void setFairnessExplanation(String fairnessExplanation) { this.fairnessExplanation = fairnessExplanation; }
 }

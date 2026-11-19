@@ -2,7 +2,9 @@ package com.mealmesh.service;
 
 import com.mealmesh.dsa.heap.HeapItem;
 import com.mealmesh.dsa.heap.MinHeap;
+import com.mealmesh.dsa.hashtable.CustomHashTable;
 import com.mealmesh.dsa.linkedlist.DoublyLinkedList;
+import com.mealmesh.dsa.trie.Trie;
 import com.mealmesh.dto.DonationRequestDto;
 import com.mealmesh.dto.DonationResponseDto;
 import com.mealmesh.entity.*;
@@ -51,19 +53,42 @@ public class DonationService {
                 .orElseGet(() -> categoryRepository.findAll().stream().findFirst()
                         .orElseThrow(() -> new IllegalStateException("No food categories configured")));
 
-        Location location = locationRepository.findFirstByUserIdAndIsPrimaryTrue(donor.getUser().getId())
-                .orElseGet(() -> {
-                    Location newLoc = new Location();
-                    newLoc.setUser(donor.getUser());
-                    newLoc.setName(donor.getOrganizationName() + " Kitchen");
-                    newLoc.setAddressLine(dto.getAddressLine() != null ? dto.getAddressLine() : "Koramangala, Bengaluru");
-                    newLoc.setLatitude(dto.getLatitude() != null ? dto.getLatitude() : 12.9352);
-                    newLoc.setLongitude(dto.getLongitude() != null ? dto.getLongitude() : 77.6245);
-                    return locationRepository.save(newLoc);
-                });
+        DonorProfile resolvedDonor = donor;
+        if (dto.getDonorOrganization() != null && !dto.getDonorOrganization().isBlank()) {
+            final String targetOrg = dto.getDonorOrganization().trim();
+            DonorProfile matchedDonor = donorProfileRepository.findAll().stream()
+                    .filter(dp -> dp.getOrganizationName().equalsIgnoreCase(targetOrg))
+                    .findFirst().orElse(null);
+            if (matchedDonor != null) {
+                resolvedDonor = matchedDonor;
+            }
+        }
+        final DonorProfile finalDonor = resolvedDonor;
+
+        Location location;
+        if (dto.getAddressLine() != null && !dto.getAddressLine().isBlank() && dto.getLatitude() != null && dto.getLatitude() != 0.0) {
+            Location newLoc = new Location();
+            newLoc.setUser(finalDonor.getUser());
+            newLoc.setName(dto.getDonorOrganization() != null ? dto.getDonorOrganization() : finalDonor.getOrganizationName());
+            newLoc.setAddressLine(dto.getAddressLine());
+            newLoc.setLatitude(dto.getLatitude());
+            newLoc.setLongitude(dto.getLongitude() != null ? dto.getLongitude() : 77.6245);
+            location = locationRepository.save(newLoc);
+        } else {
+            location = locationRepository.findFirstByUserIdAndIsPrimaryTrue(finalDonor.getUser().getId())
+                    .orElseGet(() -> {
+                        Location newLoc = new Location();
+                        newLoc.setUser(finalDonor.getUser());
+                        newLoc.setName(finalDonor.getOrganizationName() + " Kitchen");
+                        newLoc.setAddressLine(dto.getAddressLine() != null ? dto.getAddressLine() : "Koramangala, Bengaluru");
+                        newLoc.setLatitude(dto.getLatitude() != null ? dto.getLatitude() : 12.9352);
+                        newLoc.setLongitude(dto.getLongitude() != null ? dto.getLongitude() : 77.6245);
+                        return locationRepository.save(newLoc);
+                    });
+        }
 
         Donation donation = new Donation();
-        donation.setDonor(donor);
+        donation.setDonor(finalDonor);
         donation.setCategory(category);
         donation.setLocation(location);
         donation.setTitle(dto.getTitle());
@@ -74,10 +99,16 @@ public class DonationService {
         donation.setServings(dto.getServings() > 0 ? dto.getServings() : (int)(donation.getQuantityKg() * 2.5));
         donation.setCookedTime(LocalDateTime.now().minusHours(1));
 
-        int hours = dto.getHoursUntilExpiry() > 0 ? dto.getHoursUntilExpiry() : 4;
-        donation.setExpiryTime(LocalDateTime.now().plusHours(hours));
+        if (dto.getMinutesUntilExpiry() != null && dto.getMinutesUntilExpiry() > 0) {
+            donation.setExpiryTime(LocalDateTime.now().plusMinutes(dto.getMinutesUntilExpiry()));
+        } else {
+            int hours = dto.getHoursUntilExpiry() > 0 ? dto.getHoursUntilExpiry() : 4;
+            donation.setExpiryTime(LocalDateTime.now().plusHours(hours));
+        }
 
-        String urgency = hours <= 2 ? "CRITICAL" : (hours <= 4 ? "HIGH" : "MEDIUM");
+        String urgency = (dto.getMinutesUntilExpiry() != null && dto.getMinutesUntilExpiry() <= 120) || (dto.getHoursUntilExpiry() > 0 && dto.getHoursUntilExpiry() <= 2)
+                ? "CRITICAL"
+                : (dto.getHoursUntilExpiry() <= 4 ? "HIGH" : "MEDIUM");
         donation.setUrgency(dto.getUrgency() != null ? dto.getUrgency() : urgency);
         donation.setStatus("AVAILABLE");
         donation.setStorageTemperatureCelsius(dto.getStorageTemperatureCelsius() != null ? dto.getStorageTemperatureCelsius() : 65.0);
@@ -117,16 +148,9 @@ public class DonationService {
         }
 
         MinHeap<Donation> minHeap = new MinHeap<>(false);
+        LocalDateTime now = LocalDateTime.now();
         for (Donation d : activeList) {
-            long secondsRemaining = Math.max(0, Duration.between(LocalDateTime.now(), d.getExpiryTime()).getSeconds());
-            double urgencyWeight = switch (d.getUrgency().toUpperCase()) {
-                case "CRITICAL" -> 0.5;
-                case "HIGH" -> 0.75;
-                case "MEDIUM" -> 1.0;
-                default -> 1.25;
-            };
-            double priorityKey = secondsRemaining * urgencyWeight;
-            minHeap.insert(new HeapItem<>(d.getId().toString(), priorityKey, d.getTitle(), d.getUrgency(), d));
+            minHeap.insert(new HeapItem<>(d.getId().toString(), priorityKey(d, now), d.getTitle(), d.getUrgency(), d));
         }
 
         List<DonationResponseDto> result = new ArrayList<>();
@@ -135,6 +159,23 @@ public class DonationService {
             result.add(mapToDto(item.getPayload()));
         }
         return result;
+    }
+
+    /**
+     * Min-heap key: seconds left before expiry multiplied by an urgency weight.
+     * Smaller key = more urgent, so extractMin() always returns the batch to rescue first.
+     */
+    static double priorityKey(Donation d, LocalDateTime now) {
+        long secondsRemaining = d.getExpiryTime() == null ? Long.MAX_VALUE / 4
+                : Math.max(0, Duration.between(now, d.getExpiryTime()).getSeconds());
+        String urgency = d.getUrgency() == null ? "MEDIUM" : d.getUrgency().toUpperCase();
+        double urgencyWeight = switch (urgency) {
+            case "CRITICAL" -> 0.5;
+            case "HIGH" -> 0.75;
+            case "MEDIUM" -> 1.0;
+            default -> 1.25;
+        };
+        return secondsRemaining * urgencyWeight;
     }
 
     @Transactional
@@ -271,17 +312,91 @@ public class DonationService {
     }
 
     public List<DonationResponseDto> getDonationsByDonor(String userEmail) {
-        List<Donation> list = donationRepository.findByDonorUserEmail(userEmail);
+        // Retrieve all donations across donor venues so donations from any chosen kitchen are immediately visible
+        List<Donation> list = donationRepository.findAll();
+        if (list.isEmpty()) {
+            ensureFreshSurplusDonations();
+            list = donationRepository.findAll();
+        }
 
-        // Doubly linked list demonstration for chronological history
-        DoublyLinkedList<Donation> historyList = new DoublyLinkedList<>();
+        LocalDateTime now = LocalDateTime.now();
+
+        // 1. Still-claimable batches go through the custom MinHeap, keyed on
+        //    seconds-to-expiry x urgency weight, so the most urgent batch comes out first.
+        MinHeap<Donation> minHeap = new MinHeap<>(false);
+        List<Donation> others = new ArrayList<>();
         for (Donation d : list) {
+            boolean claimable = "AVAILABLE".equalsIgnoreCase(d.getStatus())
+                    && d.getExpiryTime() != null && d.getExpiryTime().isAfter(now);
+            if (claimable) {
+                minHeap.insert(new HeapItem<>(d.getId().toString(), priorityKey(d, now), d.getTitle(), d.getUrgency(), d));
+            } else {
+                others.add(d);
+            }
+        }
+
+        // 2. Everything else (claimed, delivered, expired) is history: newest first.
+        others.sort((a, b) -> {
+            if (a.getCreatedAt() == null) return 1;
+            if (b.getCreatedAt() == null) return -1;
+            return b.getCreatedAt().compareTo(a.getCreatedAt());
+        });
+
+        // Doubly linked list holds the final timeline (O(1) append at the tail).
+        DoublyLinkedList<Donation> historyList = new DoublyLinkedList<>();
+        while (!minHeap.isEmpty()) {
+            historyList.addLast(minHeap.extractMin().getPayload());
+        }
+        for (Donation d : others) {
             historyList.addLast(d);
         }
 
         List<DonationResponseDto> result = new ArrayList<>();
         for (Donation d : historyList.toList()) {
             result.add(mapToDto(d));
+        }
+        return result;
+    }
+
+    /** Common dishes so autocomplete is useful even on a fresh database. */
+    private static final String[] COMMON_DISHES = {
+        "Veg Biryani", "Vegetable Pulao", "Jeera Rice", "Lemon Rice", "Curd Rice", "Bisi Bele Bath",
+        "Sambar Rice", "Rasam Rice", "Idli Sambar", "Masala Dosa", "Medu Vada", "Upma", "Poha",
+        "Chapathi with Dal", "Paneer Butter Masala", "Dal Tadka", "Rajma Chawal", "Chole Bhature",
+        "Veg Fried Rice", "Ragi Mudde", "Khichdi", "Bread and Buns", "Sandwich Bread", "Fruit Salad"
+    };
+
+    /**
+     * Dish-name autocomplete with a Trie (prefix tree): every known dish name is inserted once,
+     * then prefixSearch walks only the characters of the prefix -> O(L) to reach the subtree.
+     * A CustomHashTable maps the trie's lower-case key back to the nicely capitalised name.
+     */
+    public List<String> suggestFoodNames(String prefix, int limit) {
+        if (prefix == null || prefix.isBlank()) return List.of();
+        Trie trie = new Trie();
+        trie.setRecordSteps(false);
+        CustomHashTable<String, String> displayName = new CustomHashTable<>();
+        displayName.setRecordSteps(false);
+
+        List<String> names = new ArrayList<>(List.of(COMMON_DISHES));
+        for (Donation d : donationRepository.findTop20ByOrderByCreatedAtDesc()) {
+            if (d.getTitle() != null) names.add(d.getTitle());
+        }
+        for (String name : names) {
+            String ascii = name.replaceAll("[^ -~]", "").trim(); // Trie nodes hold 128 ASCII children
+            if (ascii.isEmpty()) continue;
+            String key = ascii.toLowerCase();
+            if (!displayName.containsKey(key)) {
+                displayName.put(key, ascii);
+                trie.insert(key, key);
+            }
+        }
+
+        String cleanPrefix = prefix.replaceAll("[^ -~]", "");
+        List<String> result = new ArrayList<>();
+        for (String key : trie.prefixSearch(cleanPrefix)) {
+            result.add(displayName.get(key));
+            if (result.size() >= limit) break;
         }
         return result;
     }

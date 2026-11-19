@@ -20,6 +20,10 @@ import {
   Users,
   Radio,
   Truck,
+  AlertTriangle,
+  Route,
+  UserX,
+  ShieldAlert,
 } from 'lucide-react';
 
 // Ultra-realistic detailed street coordinates following actual Bengaluru road geometries
@@ -53,7 +57,7 @@ export const BENGALURU_REALISTIC_ROAD_TRACK: [number, number][] = [
   [12.9128, 77.6385], // 14th Main Arterial Road Junction
   [12.9136, 77.6355], // HSR Sector 5 Link Road
   [12.9143, 77.6325], // Madiwala Lake Peripheral Road
-  [12.9150, 77.6295], // Silk Board Bypass Slip Road
+  [12.9150, 77.6295], // Silk Board Bypass Slip Road (OBSTRUCTION POINT)
   [12.9158, 77.6265], // Merge onto Outer Ring Road (ORR) BTM Corridor
   [12.9164, 77.6235], // BTM Layout 1st Stage
   [12.9170, 77.6200], // BTM 2nd Stage Ring Road
@@ -62,6 +66,39 @@ export const BENGALURU_REALISTIC_ROAD_TRACK: [number, number][] = [
   [12.9189, 77.6105], // Jayadeva Hospital Flyover Approach
   [12.9195, 77.6075], // Jayadeva Hospital Underpass
   [12.9202, 77.6045], // Bannerghatta Road Interchange
+  [12.9209, 77.6015], // East End Circle, Jayanagar
+  [12.9216, 77.5992], // Jayanagar 9th Block East Main Road
+  [12.9224, 77.5975], // 9th Block Market Boulevard
+  [12.9232, 77.5960], // 32nd Cross Road Intersection
+  [12.9238, 77.5950], // Jayanagar 4th 'T' Block Entry
+  [12.9244, 77.5942], // 10th Main Road Jayanagar
+  [12.9250, 77.5938], // Destination: Akshaya Patra Foundation Hub, Jayanagar
+];
+
+// Blocked obstruction location (Hosur Road / Silk Board Underpass)
+export const BLOCKED_ROAD_SPOT: [number, number] = [12.9150, 77.6295];
+
+// A* Detour Track generated dynamically avoiding the Silk Board underpass via 100ft Ring Rd Flyover
+export const BENGALURU_DETOUR_ROAD_TRACK: [number, number][] = [
+  [12.9352, 77.6245], // Start: ITC Gardenia Kitchen, Koramangala
+  [12.9348, 77.6253],
+  [12.9342, 77.6264],
+  [12.9335, 77.6272],
+  [12.9328, 77.6279],
+  [12.9318, 77.6288], // Sony World Signal Junction
+  [12.9312, 77.6293],
+  [12.9304, 77.6300], // Intermediate Ring Road
+  [12.9295, 77.6309],
+  [12.9284, 77.6318],
+  [12.9272, 77.6327],
+  [12.9261, 77.6334],
+  [12.9248, 77.6342], // Koramangala Water Tank Circle - Detour Divergence Point!
+  [12.9272, 77.6305], // Detour Ramp: 100ft Ring Road Flyover Ascent
+  [12.9290, 77.6260], // Elevated Corridor Overpass
+  [12.9302, 77.6205], // Tavarekere Bypass Arterial
+  [12.9285, 77.6145], // BTM 1st Stage Inner Elevated Link
+  [12.9250, 77.6090], // Bannerghatta Road North Bypass Ramp
+  [12.9215, 77.6045], // Convergence Point: Bannerghatta Rd Interchange
   [12.9209, 77.6015], // East End Circle, Jayanagar
   [12.9216, 77.5992], // Jayanagar 9th Block East Main Road
   [12.9224, 77.5975], // 9th Block Market Boulevard
@@ -126,6 +163,44 @@ const ROUTE_MANEUVERS: RouteManeuver[] = [
   {
     progressThreshold: 1.0,
     instruction: 'Destination on the Left: Akshaya Patra Redistribution Hub',
+    roadName: 'Jayanagar 4th \'T\' Block',
+    type: 'destination',
+    distanceMeters: 30,
+  },
+];
+
+const DETOUR_ROUTE_MANEUVERS: RouteManeuver[] = [
+  {
+    progressThreshold: 0.25,
+    instruction: 'In 180 m: Diverge at Koramangala Water Tank onto 100ft Ring Rd Flyover (Bypassing Silk Board)',
+    roadName: '100ft Elevated Corridor Ramp',
+    type: 'turn-right',
+    distanceMeters: 180,
+  },
+  {
+    progressThreshold: 0.50,
+    instruction: 'In 520 m: Flyover clear — follow Tavarekere bypass towards BTM 1st Stage',
+    roadName: '100ft Intermediate Ring Road Flyover',
+    type: 'straight',
+    distanceMeters: 520,
+  },
+  {
+    progressThreshold: 0.75,
+    instruction: 'In 340 m: Merge via Bannerghatta North Link into East End Circle',
+    roadName: 'Tavarekere - BTM Link Arterial',
+    type: 'fork',
+    distanceMeters: 340,
+  },
+  {
+    progressThreshold: 0.95,
+    instruction: 'In 160 m: Turn Left onto 9th Block Main Road Jayanagar',
+    roadName: 'East End Circle, Jayanagar',
+    type: 'turn-left',
+    distanceMeters: 160,
+  },
+  {
+    progressThreshold: 1.0,
+    instruction: 'Destination on Left: Akshaya Patra Foundation Hub',
     roadName: 'Jayanagar 4th \'T\' Block',
     type: 'destination',
     distanceMeters: 30,
@@ -320,6 +395,66 @@ const createFleetVolunteerIcon = (type: string = 'TWO_WHEELER') =>
     iconAnchor: [17, 17],
   });
 
+// Custom Roadblock Obstruction Marker Icon (Red Pulsing ⛔)
+const createRoadblockIcon = () =>
+  L.divIcon({
+    className: 'custom-roadblock-icon',
+    html: `
+      <div style="position: relative; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center;">
+        <div style="
+          position: absolute;
+          width: 42px;
+          height: 42px;
+          border-radius: 50%;
+          background: rgba(239, 68, 68, 0.45);
+          animation: ping 1.2s cubic-bezier(0, 0, 0.2, 1) infinite;
+        "></div>
+        <div style="
+          width: 32px;
+          height: 32px;
+          background: #b91c1c;
+          border-radius: 50%;
+          border: 2px solid #ffffff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 4px 12px rgba(220, 38, 38, 0.6);
+          font-size: 16px;
+        ">
+          ⛔
+        </div>
+      </div>
+    `,
+    iconSize: [42, 42],
+    iconAnchor: [21, 21],
+  });
+
+// Detour Waypoint Marker Icon
+const createDetourWaypointIcon = (label: string) =>
+  L.divIcon({
+    className: 'custom-detour-icon',
+    html: `
+      <div style="
+        background: #d97706;
+        color: white;
+        padding: 2px 7px;
+        border-radius: 12px;
+        font-size: 10px;
+        font-weight: 800;
+        border: 2px solid white;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.35);
+        white-space: nowrap;
+        display: flex;
+        align-items: center;
+        gap: 3px;
+      ">
+        <span>↪️</span> ${label}
+      </div>
+    `,
+    iconSize: [140, 24],
+    iconAnchor: [70, 12],
+  });
+
 // Component to dynamically fit map bounds
 const MapBoundsWatcher: React.FC<{ coords: [number, number][] }> = ({ coords }) => {
   const map = useMap();
@@ -328,9 +463,11 @@ const MapBoundsWatcher: React.FC<{ coords: [number, number][] }> = ({ coords }) 
       const bounds = L.latLngBounds(coords.map(([lat, lon]) => [lat, lon]));
       map.fitBounds(bounds, { padding: [50, 50] });
     }
-  }, [map]);
+  }, [map, coords]);
   return null;
 };
+
+export type DisruptionType = 'ROAD_BLOCKED' | 'VOLUNTEER_CANCELLED' | 'EXPIRY_CRITICAL' | null;
 
 interface LiveDeliveryTrackerProps {
   foodTitle?: string;
@@ -342,6 +479,9 @@ interface LiveDeliveryTrackerProps {
   deliveryId?: string;
   onDelivered?: () => void;
   height?: string;
+  disruptionMode?: DisruptionType;
+  disruptionNotice?: string | null;
+  onDisruptionChange?: (mode: DisruptionType) => void;
 }
 
 export const LiveDeliveryTracker: React.FC<LiveDeliveryTrackerProps> = ({
@@ -354,8 +494,34 @@ export const LiveDeliveryTracker: React.FC<LiveDeliveryTrackerProps> = ({
   deliveryId,
   onDelivered,
   height = '580px',
+  disruptionMode = null,
+  disruptionNotice = null,
+  onDisruptionChange,
 }) => {
-  const roadCoordinates = BENGALURU_REALISTIC_ROAD_TRACK;
+  // Local disruption state synced with prop or triggered directly on map
+  const [localDisruption, setLocalDisruption] = useState<DisruptionType>(disruptionMode || null);
+
+  useEffect(() => {
+    if (disruptionMode !== undefined) {
+      setLocalDisruption(disruptionMode);
+      if (disruptionMode === 'EXPIRY_CRITICAL') {
+        setSpeedMultiplier(4);
+      }
+    }
+  }, [disruptionMode]);
+
+  const isDetourActive = localDisruption === 'ROAD_BLOCKED';
+  const isDriverCancelled = localDisruption === 'VOLUNTEER_CANCELLED';
+  const isExpiryCritical = localDisruption === 'EXPIRY_CRITICAL';
+
+  // Dynamic route selection: Detour path if road is blocked, else default path
+  const roadCoordinates = isDetourActive ? BENGALURU_DETOUR_ROAD_TRACK : BENGALURU_REALISTIC_ROAD_TRACK;
+  const maneuvers = isDetourActive ? DETOUR_ROUTE_MANEUVERS : ROUTE_MANEUVERS;
+
+  // Dynamic transporter assignment: Priya Sundaram if volunteer cancelled
+  const activeTransporter = isDriverCancelled ? 'Priya Sundaram (Standby Transporter)' : transporterName;
+  const activeVehicle = isDriverCancelled ? 'Ather 450X (Electric) • KA-05-MR-4421' : vehicleNumber;
+
   const totalDistanceKm = calculateTotalDistance(roadCoordinates);
 
   // Live simulation states (under 5 minutes, default 120s)
@@ -401,6 +567,17 @@ export const LiveDeliveryTracker: React.FC<LiveDeliveryTrackerProps> = ({
     hasNotifiedRef.current = false;
   };
 
+  const handleSetDisruption = (type: DisruptionType) => {
+    setLocalDisruption(type);
+    if (type === 'EXPIRY_CRITICAL') {
+      setSpeedMultiplier(4);
+    }
+    if (onDisruptionChange) {
+      onDisruptionChange(type);
+    }
+    handleRestart();
+  };
+
   // Calculate current progress (0.0 to 1.0)
   const progress = Math.min(1.0, elapsedSec / Math.max(1, totalDurationSec));
 
@@ -441,12 +618,25 @@ export const LiveDeliveryTracker: React.FC<LiveDeliveryTrackerProps> = ({
 
   // Current realistic turn-by-turn instruction
   const currentManeuver =
-    ROUTE_MANEUVERS.find((m) => progress < m.progressThreshold) ||
-    ROUTE_MANEUVERS[ROUTE_MANEUVERS.length - 1];
+    maneuvers.find((m) => progress < m.progressThreshold) ||
+    maneuvers[maneuvers.length - 1];
 
   // Calculate realistic dynamic speed (slower near signals/turns, faster on ORR)
   const isNearTurn = rawIndex % 5 < 1.2;
-  const currentSpeedKmH = isReached ? 0 : isNearTurn ? 18 : 36;
+  const currentSpeedKmH = isReached ? 0 : isNearTurn ? 18 : isExpiryCritical ? 48 : 36;
+
+  // Color schemes based on active disruption
+  const traversedColor = isDetourActive
+    ? '#f59e0b'
+    : isExpiryCritical
+    ? '#06b6d4'
+    : '#059669';
+
+  const remainingColor = isDetourActive
+    ? '#d97706'
+    : isExpiryCritical
+    ? '#0284c7'
+    : '#2563eb';
 
   return (
     <div className="rounded-3xl overflow-hidden border border-slate-200 shadow-xl bg-white flex flex-col relative font-sans">
@@ -471,16 +661,30 @@ export const LiveDeliveryTracker: React.FC<LiveDeliveryTrackerProps> = ({
                 className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
                   isReached
                     ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40'
+                    : isDetourActive
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-400/40'
+                    : isDriverCancelled
+                    ? 'bg-rose-500/20 text-rose-300 border-rose-400/40'
+                    : isExpiryCritical
+                    ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400/40'
                     : 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40'
                 }`}
               >
-                {isReached ? 'DELIVERED' : 'HIGH-ACCURACY GPS'}
+                {isReached
+                  ? 'DELIVERED'
+                  : isDetourActive
+                  ? 'A* DETOUR RE-ROUTED'
+                  : isDriverCancelled
+                  ? 'KNN REASSIGNED'
+                  : isExpiryCritical
+                  ? 'GREEN CORRIDOR'
+                  : 'HIGH-ACCURACY GPS'}
               </span>
             </div>
             <p className="text-[11px] text-slate-300">
               {isReached
                 ? `Delivered ${quantityKg} kg hot meals to ${ngoName}.`
-                : `${transporterName} navigating via ${currentManeuver.roadName}.`}
+                : `${activeTransporter} navigating via ${currentManeuver.roadName}.`}
             </p>
           </div>
         </div>
@@ -527,6 +731,71 @@ export const LiveDeliveryTracker: React.FC<LiveDeliveryTrackerProps> = ({
         </div>
       </div>
 
+      {/* Disruption-Aware Dynamic Route Re-Planning Live Toolbar */}
+      <div className="bg-slate-800 text-white px-5 py-2.5 flex flex-wrap items-center justify-between gap-2 border-b border-slate-700 z-10 text-xs">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+          <span className="font-bold text-[11px] text-slate-200">
+            Disruption Simulator:
+          </span>
+          <span className="text-[10px] text-slate-400 hidden sm:inline">
+            (Tests Dynamic Graph Adaptation & Re-Routing in real time)
+          </span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => handleSetDisruption('ROAD_BLOCKED')}
+            className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition flex items-center gap-1.5 border ${
+              localDisruption === 'ROAD_BLOCKED'
+                ? 'bg-amber-500 text-slate-900 border-amber-400 shadow-md font-extrabold'
+                : 'bg-slate-700/80 hover:bg-slate-700 text-slate-200 border-slate-600'
+            }`}
+          >
+            <Route className="w-3 h-3 text-amber-400" />
+            <span>🚧 Road Blocked (A* Detour)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleSetDisruption('VOLUNTEER_CANCELLED')}
+            className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition flex items-center gap-1.5 border ${
+              localDisruption === 'VOLUNTEER_CANCELLED'
+                ? 'bg-rose-500 text-white border-rose-400 shadow-md font-extrabold'
+                : 'bg-slate-700/80 hover:bg-slate-700 text-slate-200 border-slate-600'
+            }`}
+          >
+            <UserX className="w-3 h-3 text-rose-400" />
+            <span>🔄 Driver Cancel (KNN)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleSetDisruption('EXPIRY_CRITICAL')}
+            className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition flex items-center gap-1.5 border ${
+              localDisruption === 'EXPIRY_CRITICAL'
+                ? 'bg-cyan-500 text-slate-900 border-cyan-400 shadow-md font-extrabold'
+                : 'bg-slate-700/80 hover:bg-slate-700 text-slate-200 border-slate-600'
+            }`}
+          >
+            <Zap className="w-3 h-3 text-cyan-400" />
+            <span>⚡ Expiry Rush (Express)</span>
+          </button>
+
+          {localDisruption && (
+            <button
+              type="button"
+              onClick={() => handleSetDisruption(null)}
+              className="px-2 py-1 rounded-lg font-bold text-[11px] bg-slate-600 hover:bg-slate-500 text-slate-200 transition flex items-center gap-1 border border-slate-500"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>Normal Route</span>
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Realistic Leaflet Map View */}
       <div className="relative" style={{ height }}>
         <MapContainer
@@ -535,7 +804,7 @@ export const LiveDeliveryTracker: React.FC<LiveDeliveryTrackerProps> = ({
           scrollWheelZoom={true}
           style={{ height: '100%', width: '100%' }}
         >
-          {/* OpenStreetMap Real-World Street Tiles (Free, No API Key Required, Clean Crisp Map) */}
+          {/* OpenStreetMap Real-World Street Tiles */}
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -544,31 +813,58 @@ export const LiveDeliveryTracker: React.FC<LiveDeliveryTrackerProps> = ({
 
           <MapBoundsWatcher coords={roadCoordinates} />
 
-          {/* Route Outer Glowing Halo */}
+          {/* If Road is blocked: Render original blocked path in dashed red line */}
+          {isDetourActive && (
+            <Polyline
+              positions={BENGALURU_REALISTIC_ROAD_TRACK}
+              color="#ef4444"
+              weight={4}
+              opacity={0.65}
+              dashArray="6, 8"
+              lineCap="round"
+            />
+          )}
+
+          {/* If Volunteer Cancelled: Render KNN dispatch intercept vector from Priya's position */}
+          {isDriverCancelled && (
+            <Polyline
+              positions={[
+                [12.9378, 77.6315], // Priya Sundaram (Standby volunteer position)
+                [12.9352, 77.6245], // Pickup Kitchen
+              ]}
+              color="#8b5cf6"
+              weight={4}
+              opacity={0.85}
+              dashArray="6, 6"
+              lineCap="round"
+            />
+          )}
+
+          {/* Active Route Outer Glowing Halo */}
           <Polyline
             positions={roadCoordinates}
-            color="#059669"
+            color={traversedColor}
             weight={10}
-            opacity={0.16}
+            opacity={0.2}
             lineCap="round"
           />
 
-          {/* Traversed Road Track (Solid Emerald Green) */}
+          {/* Traversed Road Track */}
           {traversedCoords.length > 1 && (
             <Polyline
               positions={traversedCoords}
-              color="#059669"
-              weight={5}
+              color={traversedColor}
+              weight={6}
               opacity={0.95}
               lineCap="round"
             />
           )}
 
-          {/* Remaining Road Track (Dashed Royal Blue) */}
+          {/* Remaining Road Track */}
           {remainingCoords.length > 1 && (
             <Polyline
               positions={remainingCoords}
-              color="#2563eb"
+              color={remainingColor}
               weight={4}
               opacity={0.8}
               dashArray="8, 8"
@@ -598,15 +894,53 @@ export const LiveDeliveryTracker: React.FC<LiveDeliveryTrackerProps> = ({
             </Popup>
           </Marker>
 
+          {/* ROAD BLOCK OBSTRUCTION MARKER (When Road Blocked) */}
+          {isDetourActive && (
+            <Marker position={BLOCKED_ROAD_SPOT} icon={createRoadblockIcon()}>
+              <Popup>
+                <div className="text-xs p-1.5 space-y-1 font-sans">
+                  <div className="flex items-center gap-1 text-red-600 font-extrabold text-sm">
+                    <span>⛔ ROAD CLOSED</span>
+                  </div>
+                  <p className="font-bold text-slate-900">Hosur Road / Silk Board Underpass</p>
+                  <p className="text-slate-600 text-[11px]">
+                    Heavy waterlogging reported. Graph edge invalidated.
+                  </p>
+                  <div className="bg-amber-50 text-amber-800 border border-amber-200 px-2 py-1 rounded text-[10px] font-bold">
+                    ↪️ A* Detour active via 100ft Ring Rd Flyover (+1.6 km)
+                  </div>
+                </div>
+              </Popup>
+            </Marker>
+          )}
+
+          {/* DETOUR WAYPOINT MARKER (When Road Blocked) */}
+          {isDetourActive && (
+            <Marker position={[12.9272, 77.6305]} icon={createDetourWaypointIcon('100ft Flyover')}>
+              <Popup>
+                <div className="text-xs p-1 space-y-1">
+                  <span className="font-bold text-amber-700 block">↪️ A* Detour Waypoint</span>
+                  <p className="text-slate-600">100ft Intermediate Ring Road Flyover Ascent</p>
+                  <span className="text-emerald-700 font-bold block">Bypasses Silk Board Chokepoint</span>
+                </div>
+              </Popup>
+            </Marker>
+          )}
+
           {/* Primary Moving Courier Scooter Marker */}
           <Marker position={[riderLat, riderLon]} icon={createScooterIcon(bearing)}>
             <Popup>
               <div className="text-xs p-1 space-y-1 font-sans">
-                <span className="font-bold text-slate-900 block">🛵 {transporterName}</span>
-                <p className="text-slate-500 text-[11px]">{vehicleNumber}</p>
+                <span className="font-bold text-slate-900 block">🛵 {activeTransporter}</span>
+                <p className="text-slate-500 text-[11px]">{activeVehicle}</p>
                 <p className="text-emerald-700 font-bold text-[11px]">
                   {isReached ? 'Arrived at Destination!' : `${remainingDistKm} km remaining`}
                 </p>
+                {isDetourActive && (
+                  <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded block">
+                    Traversing A* Detour Route
+                  </span>
+                )}
               </div>
             </Popup>
           </Marker>
@@ -637,9 +971,50 @@ export const LiveDeliveryTracker: React.FC<LiveDeliveryTrackerProps> = ({
             ))}
         </MapContainer>
 
+        {/* Dynamic Disruption Status Toast / Banner on Top Center of Map */}
+        {localDisruption && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] pointer-events-auto max-w-lg w-[90%] sm:w-auto">
+            <div
+              className={`rounded-2xl p-3 border shadow-2xl backdrop-blur-md flex items-center gap-2.5 text-xs ${
+                isDetourActive
+                  ? 'bg-amber-950/90 text-amber-100 border-amber-700'
+                  : isDriverCancelled
+                  ? 'bg-rose-950/90 text-rose-100 border-rose-700'
+                  : 'bg-cyan-950/90 text-cyan-100 border-cyan-700'
+              }`}
+            >
+              <div
+                className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${
+                  isDetourActive
+                    ? 'bg-amber-700 text-white'
+                    : isDriverCancelled
+                    ? 'bg-rose-700 text-white'
+                    : 'bg-cyan-700 text-white'
+                }`}
+              >
+                {isDetourActive && <Route className="w-4 h-4" />}
+                {isDriverCancelled && <UserX className="w-4 h-4" />}
+                {isExpiryCritical && <Zap className="w-4 h-4" />}
+              </div>
+              <div className="leading-tight">
+                <span className="font-extrabold block text-white text-[12px]">
+                  {isDetourActive && 'A* Detour Recalculated (+1.6 km detour)'}
+                  {isDriverCancelled && 'Standby Transporter Dispatched (Spatial KNN Query)'}
+                  {isExpiryCritical && '⚡ Green Corridor Priority Express Active'}
+                </span>
+                <span className="text-[10px] opacity-90 block mt-0.5">
+                  {isDetourActive && 'Hosur Rd underpass flooded; diverted via 100ft Ring Rd Flyover.'}
+                  {isDriverCancelled && 'Rahul Sharma cancelled; reassigned to Priya Sundaram (0.8 km away).'}
+                  {isExpiryCritical && 'Batch expiry imminent; signal priority engaged, speed 4x.'}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Turn-by-Turn GPS Navigation Overlay (Like Google Maps / Waze) */}
         {!isReached && (
-          <div className="absolute top-4 left-4 z-[1000] pointer-events-auto max-w-sm">
+          <div className="absolute top-4 left-4 z-[1000] pointer-events-auto max-w-xs sm:max-w-sm hidden sm:block">
             <div className="bg-emerald-950/95 backdrop-blur-md text-white rounded-2xl p-3.5 border border-emerald-800 shadow-2xl flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-emerald-800 flex items-center justify-center shrink-0 border border-emerald-600">
                 {currentManeuver.type === 'turn-right' && <CornerUpRight className="w-5 h-5 text-emerald-300" />}
@@ -673,7 +1048,11 @@ export const LiveDeliveryTracker: React.FC<LiveDeliveryTrackerProps> = ({
               <div className="flex items-center gap-3">
                 <div
                   className={`p-3 rounded-2xl ${
-                    isReached ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'
+                    isReached
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : isDetourActive
+                      ? 'bg-amber-100 text-amber-900'
+                      : 'bg-emerald-100 text-emerald-900'
                   }`}
                 >
                   <Bike className="w-6 h-6" />
@@ -690,6 +1069,8 @@ export const LiveDeliveryTracker: React.FC<LiveDeliveryTrackerProps> = ({
                   <span className="text-xs text-slate-500 font-medium">
                     {isReached
                       ? `Digital Handover Verified • ${Math.round(quantityKg * 2.5)} meals received`
+                      : isDetourActive
+                      ? `${remainingDistKm} km remaining (Detour +1.6 km) • Speed: ~${currentSpeedKmH} km/h • A* Replanned`
                       : `${remainingDistKm} km remaining • Speed: ~${currentSpeedKmH} km/h • Dual-Band GPS`}
                   </span>
                 </div>
@@ -733,6 +1114,10 @@ export const LiveDeliveryTracker: React.FC<LiveDeliveryTrackerProps> = ({
                   className={`h-full rounded-full transition-all duration-200 ${
                     isReached
                       ? 'bg-emerald-500'
+                      : isDetourActive
+                      ? 'bg-gradient-to-r from-amber-500 to-yellow-400'
+                      : isExpiryCritical
+                      ? 'bg-gradient-to-r from-cyan-500 to-teal-400'
                       : 'bg-gradient-to-r from-emerald-500 to-teal-400'
                   }`}
                   style={{ width: `${progress * 100}%` }}
@@ -744,13 +1129,15 @@ export const LiveDeliveryTracker: React.FC<LiveDeliveryTrackerProps> = ({
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1 text-xs">
               <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
                 <span className="text-[10px] text-slate-400 block font-bold uppercase">Transporter</span>
-                <span className="font-bold text-slate-900 block truncate">{transporterName}</span>
-                <span className="text-[10px] text-emerald-700 font-semibold">⭐ 4.9 (320 deliveries)</span>
+                <span className="font-bold text-slate-900 block truncate">{activeTransporter}</span>
+                <span className="text-[10px] text-emerald-700 font-semibold">
+                  {isDriverCancelled ? '⭐ 4.95 (KNN Reassigned)' : '⭐ 4.9 (320 deliveries)'}
+                </span>
               </div>
 
               <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
                 <span className="text-[10px] text-slate-400 block font-bold uppercase">Vehicle & Battery</span>
-                <span className="font-bold text-slate-900 block truncate">Hero Electric Photon</span>
+                <span className="font-bold text-slate-900 block truncate">{activeVehicle}</span>
                 <span className="text-[10px] text-emerald-700 font-semibold flex items-center gap-1">
                   <BatteryCharging className="w-3 h-3" /> 84% • Range: 46 km
                 </span>
@@ -765,11 +1152,14 @@ export const LiveDeliveryTracker: React.FC<LiveDeliveryTrackerProps> = ({
               </div>
 
               <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                <span className="text-[10px] text-slate-400 block font-bold uppercase">Telemetry Accuracy</span>
-                <span className="font-bold text-slate-900 block flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> NavIC / GPS Lock
+                <span className="text-[10px] text-slate-400 block font-bold uppercase">Route & Telemetry</span>
+                <span className="font-bold text-slate-900 block flex items-center gap-1 truncate">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  {isDetourActive ? 'A* Detour Mode' : 'NavIC / GPS Lock'}
                 </span>
-                <span className="text-[10px] text-slate-500">±1.2m Accuracy • 14 Sats</span>
+                <span className="text-[10px] text-slate-500">
+                  {isDetourActive ? '+1.6 km • Silk Board Bypassed' : '±1.2m Accuracy • 14 Sats'}
+                </span>
               </div>
             </div>
           </div>

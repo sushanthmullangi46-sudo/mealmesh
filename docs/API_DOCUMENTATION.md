@@ -66,7 +66,32 @@ All protected endpoints require the Bearer JWT token header:
 
 ---
 
-## 3. Greedy Matching & Allocation Endpoints
+## 3. IoT Food Safety Monitoring
+
+### Submit ESP32 Sensor Telemetry
+- **Endpoint:** `POST /api/iot/telemetry`
+- **Device Authentication:** `X-Device-Key: <MEALMESH_IOT_DEVICE_API_KEY>`
+- **Request Body:**
+  ```json
+  {
+    "sensorId": "esp32-kitchen-01",
+    "donationId": "<donation UUID>",
+    "temperatureCelsius": 4.2,
+    "humidityPercent": 62.0,
+    "gasPpm": 120.0
+  }
+  ```
+- **Description:** Stores DHT22 temperature/humidity and MQ-series gas readings. Readings that exceed configured thresholds create notifications for the donor and administrators.
+- **Threshold configuration:** `MEALMESH_IOT_TEMPERATURE_MAX_CELSIUS`, `MEALMESH_IOT_HUMIDITY_MAX_PERCENT`, and `MEALMESH_IOT_GAS_MAX_PPM`.
+
+### Read Recent Sensor Telemetry (Admin)
+- **Endpoint:** `GET /api/admin/food-safety/readings`
+- **Description:** Returns the latest 100 readings for the admin sensor monitor.
+- **Setup guide:** [IoT Food Safety Monitoring](IOT_FOOD_SAFETY.md). Thresholds are demo defaults and require calibration; MQ readings are environmental indicators, not food-safety certification.
+
+---
+
+## 4. Greedy Matching & Allocation Endpoints
 
 ### Run Greedy Match
 - **Endpoint:** `POST /api/matching/match-donation/{donationId}`
@@ -74,7 +99,7 @@ All protected endpoints require the Bearer JWT token header:
 
 ---
 
-## 4. Route Optimization Endpoints
+## 5. Route Optimization Endpoints
 
 ### Compute Dijkstra Shortest Path
 - **Endpoint:** `POST /api/routing/shortest-path`
@@ -99,7 +124,7 @@ All protected endpoints require the Bearer JWT token header:
 
 ---
 
-## 5. Interactive DSA Laboratory Endpoint
+## 6. Interactive DSA Laboratory Endpoint
 
 ### Execute Algorithm Step
 - **Endpoint:** `POST /api/dsa-lab/execute`

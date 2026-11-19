@@ -8,6 +8,8 @@ import {
   AnalyticsSummary,
   RouteResponse,
   RouteWaypoint,
+  SensorReading,
+  FoodSafetyThresholds,
 } from '../types/mealmesh';
 
 const API_BASE = '/api';
@@ -74,6 +76,14 @@ export const api = {
   },
 
   // Donations
+  /** Trie-powered dish-name suggestions (GET /api/public/food-suggestions?prefix=...). */
+  async getFoodSuggestions(prefix: string): Promise<string[]> {
+    if (!prefix.trim()) return [];
+    const res = await fetch(`${API_BASE}/public/food-suggestions?prefix=${encodeURIComponent(prefix)}`);
+    const json = await res.json();
+    return json.success ? json.data : [];
+  },
+
   async getActiveDonations(): Promise<Donation[]> {
     const res = await fetch(`${API_BASE}/public/donations/active`);
     const json = await res.json();
@@ -119,9 +129,35 @@ export const api = {
 
   // Matching
   async matchDonation(donationId: string) {
+    let headers = getAuthHeader();
+    try {
+      const fairnessRes = await fetch(`${API_BASE}/fairness/allocate/${donationId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...headers },
+      });
+      const fairnessJson = await fairnessRes.json();
+      if (fairnessJson.success && fairnessJson.data) {
+        const d = fairnessJson.data;
+        return {
+          allocatedKg: d.totalAllocatedKg,
+          matchedNgos: d.allocations?.map((a: any) => ({
+            ngoName: a.ngoName,
+            allocatedKg: a.allocatedKg,
+            score: a.score,
+            reason: a.explanationReason,
+          })),
+          allocations: d.allocations,
+          giniBefore: d.giniCoefficientBefore,
+          giniAfter: d.giniCoefficientAfter,
+        };
+      }
+    } catch (e) {
+      console.warn('Fairness allocate fallback to standard matching:', e);
+    }
+
     const res = await fetch(`${API_BASE}/matching/match-donation/${donationId}`, {
       method: 'POST',
-      headers: getAuthHeader(),
+      headers,
     });
     const json = await res.json();
     if (!json.success) throw new Error(json.message || 'Matching failed');
@@ -292,6 +328,20 @@ export const api = {
     });
     const json = await res.json();
     return json.message;
+  },
+
+  async getFoodSafetyReadings(): Promise<SensorReading[]> {
+    const res = await fetch(`${API_BASE}/admin/food-safety/readings`, { headers: getAuthHeader() });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.message || 'Could not load sensor readings');
+    return json.data || [];
+  },
+
+  async getFoodSafetyThresholds(): Promise<FoodSafetyThresholds> {
+    const res = await fetch(`${API_BASE}/admin/food-safety/thresholds`, { headers: getAuthHeader() });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.message || 'Could not load food safety thresholds');
+    return json.data;
   },
 
   // Analytics

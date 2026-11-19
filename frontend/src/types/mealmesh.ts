@@ -35,6 +35,25 @@ export interface Donation {
   createdAt: string;
 }
 
+export interface SensorReading {
+  id: string;
+  donationId: string;
+  donationTitle: string;
+  sensorId: string;
+  temperatureCelsius: number;
+  humidityPercent: number;
+  gasPpm: number;
+  recordedAt: string;
+  alert: boolean;
+  alertMessage?: string;
+}
+
+export interface FoodSafetyThresholds {
+  temperatureMaxCelsius: number;
+  humidityMaxPercent: number;
+  gasMaxPpm: number;
+}
+
 export interface NgoProfile {
   id: string;
   organizationName: string;
@@ -47,6 +66,10 @@ export interface NgoProfile {
   dietaryPreferences: string;
   verified: boolean;
   availableCapacityKg?: number;
+  vulnerabilityIndex?: number;
+  targetBeneficiaryGroup?: string;
+  dailyDeficitKg?: number;
+  daysSinceLastServed?: number;
 }
 
 export interface VolunteerProfile {
@@ -93,6 +116,7 @@ export interface Allocation {
   matchedAt: string;
   donation?: Donation;
   ngo?: NgoProfile;
+  fairnessExplanation?: string;
 }
 
 export interface AnalyticsSummary {
@@ -107,6 +131,7 @@ export interface AnalyticsSummary {
   completedDeliveriesCount: number;
   rescuedByCategory: Array<{ category: string; quantityKg: number; percentage: number }>;
   weeklyTrend: Array<{ day: string; foodRescuedKg: number; deliveries: number }>;
+  deliveryZoneCount?: number;
 }
 
 export interface RouteWaypoint {

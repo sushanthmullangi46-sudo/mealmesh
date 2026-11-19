@@ -77,14 +77,15 @@ public class AdminController {
     public ResponseEntity<ApiResponse<DonationResponseDto>> simulateUrgentDonation() {
         try {
             DonationRequestDto dto = new DonationRequestDto();
-            dto.setTitle("Grand Palace Banquet Surplus Meals");
-            dto.setDescription("Hot nutritious lunch buffet surplus from royal banquet hall.");
+            dto.setTitle("⚡ Grand Palace Banquet Surplus Meals");
+            dto.setDescription("Hot nutritious lunch buffet surplus from royal banquet hall (40 kg ready for immediate claim).");
             dto.setCategoryName("Cooked Meals");
             dto.setFoodType("COOKED");
             dto.setDietaryType("VEG");
             dto.setQuantityKg(40.0);
             dto.setServings(100);
-            dto.setHoursUntilExpiry(2);
+            dto.setMinutesUntilExpiry(25);
+            dto.setHoursUntilExpiry(1);
             dto.setUrgency("CRITICAL");
             dto.setStorageTemperatureCelsius(68.0);
             dto.setAllergenInfo("Contains Dairy/Gluten");

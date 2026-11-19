@@ -1,0 +1,8 @@
+# One-click deploy on Render (https://render.com): New + > Blueprint > pick this repository.
+services:
+  - type: web
+    name: mealmesh
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/landing/stats
