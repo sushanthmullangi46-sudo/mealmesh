@@ -323,6 +323,12 @@ export const VolunteerDashboard: React.FC = () => {
                           >
                             {del.status}
                           </span>
+                          {del.volunteer?.fullName && (
+                            <span className="text-[10px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 inline-flex items-center gap-1">
+                              <Bike className="w-2.5 h-2.5 text-slate-500" />
+                              {del.volunteer.fullName}
+                            </span>
+                          )}
                           {isApproved && (
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 inline-flex items-center gap-1">
                               <CheckCircle className="w-3 h-3 text-emerald-600" />

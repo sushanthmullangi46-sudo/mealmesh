@@ -28,19 +28,31 @@ public class DonationService {
     private final LocationRepository locationRepository;
     private final AuditLogRepository auditLogRepository;
     private final NotificationRepository notificationRepository;
+    private final AllocationRepository allocationRepository;
+    private final DeliveryRepository deliveryRepository;
+    private final NgoProfileRepository ngoProfileRepository;
+    private final VolunteerProfileRepository volunteerProfileRepository;
 
     public DonationService(DonationRepository donationRepository,
                            DonorProfileRepository donorProfileRepository,
                            FoodCategoryRepository categoryRepository,
                            LocationRepository locationRepository,
                            AuditLogRepository auditLogRepository,
-                           NotificationRepository notificationRepository) {
+                           NotificationRepository notificationRepository,
+                           AllocationRepository allocationRepository,
+                           DeliveryRepository deliveryRepository,
+                           NgoProfileRepository ngoProfileRepository,
+                           VolunteerProfileRepository volunteerProfileRepository) {
         this.donationRepository = donationRepository;
         this.donorProfileRepository = donorProfileRepository;
         this.categoryRepository = categoryRepository;
         this.locationRepository = locationRepository;
         this.auditLogRepository = auditLogRepository;
         this.notificationRepository = notificationRepository;
+        this.allocationRepository = allocationRepository;
+        this.deliveryRepository = deliveryRepository;
+        this.ngoProfileRepository = ngoProfileRepository;
+        this.volunteerProfileRepository = volunteerProfileRepository;
     }
 
     @Transactional
@@ -125,6 +137,52 @@ public class DonationService {
         audit.setEntityId(donation.getId());
         audit.setDetails("Registered " + donation.getQuantityKg() + " kg surplus: " + donation.getTitle());
         auditLogRepository.save(audit);
+
+        // Create initial dispatch mission so it immediately appears in Volunteer Mission Hub
+        try {
+            NgoProfile defaultNgo = ngoProfileRepository.findAll().stream().findFirst().orElse(null);
+            VolunteerProfile defaultVol = volunteerProfileRepository.findAll().stream()
+                    .filter(VolunteerProfile::isAvailable)
+                    .findFirst()
+                    .orElseGet(() -> volunteerProfileRepository.findAll().stream().findFirst().orElse(null));
+
+            if (defaultNgo != null) {
+                Allocation alloc = new Allocation();
+                alloc.setDonation(donation);
+                alloc.setNgo(defaultNgo);
+                alloc.setAllocatedQuantityKg(donation.getQuantityKg());
+                alloc.setStatus("ACCEPTED");
+                alloc.setMatchScore(95.0);
+                alloc.setMatchedAt(LocalDateTime.now());
+                alloc = allocationRepository.save(alloc);
+
+                double pLat = donation.getLocation() != null ? donation.getLocation().getLatitude() : 12.9352;
+                double pLon = donation.getLocation() != null ? donation.getLocation().getLongitude() : 77.6245;
+
+                Location ngoLoc = locationRepository.findFirstByUserIdAndIsPrimaryTrue(
+                        defaultNgo.getUser() != null ? defaultNgo.getUser().getId() : null).orElse(null);
+                double dLat = ngoLoc != null ? ngoLoc.getLatitude() : 12.9121;
+                double dLon = ngoLoc != null ? ngoLoc.getLongitude() : 77.6446;
+
+                Delivery delivery = new Delivery();
+                delivery.setAllocation(alloc);
+                delivery.setVolunteer(defaultVol);
+                delivery.setStatus("ASSIGNED");
+                delivery.setPickupLatitude(pLat);
+                delivery.setPickupLongitude(pLon);
+                delivery.setDropoffLatitude(dLat);
+                delivery.setDropoffLongitude(dLon);
+
+                double distKm = 4.2;
+                delivery.setEstimatedDistanceKm(distKm);
+                delivery.setEstimatedTimeMinutes(15.0);
+                delivery.setStartTime(LocalDateTime.now());
+                delivery.setNotes("Rescue Dispatch Mission: " + donation.getTitle() + " (" + donation.getQuantityKg() + " kg)");
+                deliveryRepository.save(delivery);
+            }
+        } catch (Exception ex) {
+            // Non-critical; ensure donation creation still succeeds
+        }
 
         return mapToDto(donation);
     }

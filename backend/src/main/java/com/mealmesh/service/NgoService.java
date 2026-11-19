@@ -130,9 +130,12 @@ public class NgoService {
         donation.setStatus("RESERVED");
         donationRepository.save(donation);
 
-        // Create Allocation
-        Allocation allocation = new Allocation();
-        allocation.setDonation(donation);
+        // Find or create Allocation
+        Allocation allocation = allocationRepository.findByDonationId(donation.getId()).stream().findFirst().orElse(null);
+        if (allocation == null) {
+            allocation = new Allocation();
+            allocation.setDonation(donation);
+        }
         allocation.setNgo(ngo);
         allocation.setAllocatedQuantityKg(claimQty);
         allocation.setStatus("ACCEPTED");
@@ -148,7 +151,13 @@ public class NgoService {
                         pLat, pLon, v.getCurrentLatitude(), v.getCurrentLongitude())))
                 .orElseGet(() -> volunteerProfileRepository.findAll().stream().findFirst().orElse(null));
 
-        Delivery delivery = new Delivery();
+        final UUID allocId = allocation.getId();
+        Delivery delivery = deliveryRepository.findAll().stream()
+                .filter(d -> d.getAllocation() != null && d.getAllocation().getId().equals(allocId))
+                .findFirst().orElse(null);
+        if (delivery == null) {
+            delivery = new Delivery();
+        }
         delivery.setAllocation(allocation);
         delivery.setVolunteer(volunteer);
         delivery.setStatus("ASSIGNED");
